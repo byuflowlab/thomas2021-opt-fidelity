@@ -2,6 +2,9 @@ using FLOWFarm; const ff = FLOWFarm
 using DelimitedFiles
 using Statistics
 using Plots
+pyplot()
+using Colors, ColorSchemes
+cs1 = ColorScheme([colorant"#BDB8AD",  colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"])
 
 # function to compare directions 
 function horns_rev_directions(nsamplepoints=1)
@@ -74,11 +77,22 @@ function horns_rev_directions(nsamplepoints=1)
 
     # normalize directional power
     normalized_power_no_ti = directional_powers_no_ti./max_power_ff
-    scatter(directions_les, normalized_power_les_niayifar, label="LES",legend=:bottomright)
-    scatter!(directions_model, normalized_power_model_niayifar, label="Niayifar 2016")
-    scatter!(winddirections, normalized_power_ti, label="FLOWFarm w/TI")
-    scatter!(winddirections, normalized_power_no_ti, label="FLOWFarm w/o TI", xlabel="Direction", ylabel="Normalized Power",fg_legend=:transparent, title="Rotor Points: $nsamplepoints")
-    
+    ms = 5
+    colors = [colorant"#BDB8AD",  colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"]
+    ls = [:solid, :dash, :dot, :dashdot, :dashdotdot]
+    lw = 1
+    fs = 13
+
+    directions_model_deg = directions_model.*180.0/pi
+    directions_les_deg = directions_les.*180.0/pi
+
+    p = plot(ylim=[0.1, 1.0], legend=:bottomleft, legendcolumns=2, legendfontsize=fs, labelfontsize=fs, tickfontsize=fs, ylabel="Normalized Power", xlabel="Direction", markerstrokewidth=0.0, grid=false, fg_legend=:transparent, background_color=:transparent, foreground_color=:black)
+    scatter!(p, directions_les_deg, normalized_power_les_niayifar, c=colors[1], label="Niayifar 2016 LES", markersize=ms, markershape=:circle, markerstrokewidth=0.0)
+    plot!(p, directions_model_deg, normalized_power_model_niayifar, c=colors[2], label="Niayifar 2016 Model", linestyle=ls[2], linewidth=lw)
+    plot!(p, directions_model_deg, normalized_power_ti, c=colors[3], label="FLOWFarm w/Local TI", linestyle=ls[3], linewidth=lw)
+    plot!(p, directions_model_deg, normalized_power_no_ti, c=colors[4], label="FLOWFarm w/o Local TI", linestyle=ls[4], linewidth=lw)
+    savefig(p, "horns-rev-direction-$nsamplepoints-sample-points.pdf")
+    display(p)
 end
 
 # function to compare rows
@@ -143,9 +157,15 @@ function horns_rev_rows(nsamplepoints=1)
                                                    normalizedpower[(10 * 2 + 40) + row]])
     end
 
-    scatter(rows, normalized_power_les_niayifar, label="LES", xlim=[1,10], title="Rotor Points: $nsamplepoints")
-    scatter!(rows, normalized_power_model_niayifar, label="Niayifar 2016")
-    scatter!(rows, normalized_power_averaged_ff_ti, label="FLOWFarm w/TI")
-    scatter!(rows, normalized_power_averaged_ff_no_ti, label="FLOWFarm w/o TI", xlabel="Row", xticks=1:10, ylabel="Normalized Power",fg_legend=:transparent, xlim=[1,10], title="Rotor Points: $nsamplepoints")
-    
+    ms = 8
+    colors = [colorant"#BDB8AD",  colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"]
+
+    fs = 13
+    p = plot(legendfontsize=fs, labelfontsize=fs, tickfontsize=fs, ylabel="Normalized Power", xticks=1:10, xlabel="Row", markerstrokewidth=0.0, grid=false, xlim=[1,10], ylim=[0,1], fg_legend=:transparent, background_color=:transparent, foreground_color=:black)
+    scatter!(p, rows, normalized_power_les_niayifar, markerstrokewidth=0.0, c=colors[1], label="Niayifar 2016 LES", markershape=:circle, markersize=ms)
+    scatter!(p, rows, normalized_power_model_niayifar, markerstrokewidth=0.0, c=colors[2], label="Niayifar 2016 Model", markershape=:utriangle, markersize=ms)
+    scatter!(p, rows, normalized_power_averaged_ff_ti, markerstrokewidth=0.0, c=colors[3], label="FLOWFarm w/Local TI", markershape=:dtriangle, markersize=ms)
+    scatter!(p, rows, normalized_power_averaged_ff_no_ti, markerstrokewidth=0.0, c=colors[4], label="FLOWFarm w/o Local TI", markershape=:star5, markersize=(ms*1.25))
+    savefig(p, "horns-rev-rows-$nsamplepoints-sample-points.pdf")
+    display(p)
 end

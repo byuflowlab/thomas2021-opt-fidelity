@@ -5,19 +5,21 @@ using Plots
 using StatsPlots
 using LsqFit
 
-function obj_func(h, p; href=70.0, sref=9.0)
+function obj_func(h, p; href=80.0, sref=8.0)
     #href=80.0, sref=8.0, hg=0.0 for sowfa
+    # for Bastankhah href = 70, sref = 9.0
     # constants
     reference_height = href
     reference_speed = sref
     ground_height = p[2]
-
+    
     # get number of points for fitting
     npoints = length(h)
 
     # initialize shear model 
-    if p[1] < 0; p = 0.0; end
-    shear_model = ff.PowerLawWindShear(p[1])
+    if p[1] < 0; p[1] = 0.0; end
+    # if p[2] < 0; p[2] = 0.0; end
+    shear_model = ff.PowerLawWindShear(p[1], p[2])
 
     # calc v by model
     v_calc = zeros(npoints)
@@ -37,10 +39,12 @@ function sowfa_shear()
 
     # optimize fit
     initial_shear = 0.1
-    fit = curve_fit(obj_func, df.h, df.s, [initial_shear])
+    initial_ground = 0.0
+    fit = curve_fit(obj_func, df.h, df.s, [initial_shear, initial_ground])
 
     # final_shear = 0.35
     final_shear = fit.param[1]
+    final_ground = fit.param[2]
 
     # set resolution of model data
     res = 250
@@ -49,11 +53,11 @@ function sowfa_shear()
     # initialize heights (input)
     h_calc = collect(1:res)
     # define shear model instance
-    shear_model = ff.PowerLawWindShear(final_shear)
+    shear_model = ff.PowerLawWindShear(final_shear, final_ground)
 
     # calculate speeds at each height
     for i in 1:res
-        v_calc[i] = ff.adjust_for_wind_shear(h_calc[i], df.s[4], df.h[4], 0.0, shear_model)
+        v_calc[i] = ff.adjust_for_wind_shear(h_calc[i], df.s[4], df.h[4], final_ground, shear_model)
     end
 
     # put model results in data frame
@@ -61,12 +65,16 @@ function sowfa_shear()
     rename!(df2,:x1 => :h,:x2 => :s)
 
     # plot LES data and model results
-    p = scatter(df.s, df.h, label="LES")
+    p = scatter(df.s, df.h, label="LES", legend=:topleft, xlabel="Wind Speed (m/s)", ylabel="Height (m)")
     plot!(df2.s, df2.h, label="Model")
+    display(p)
 
     # print optimized shear value
     println("optimized shear: ", final_shear)
+    println("optimized ground: ", final_ground)
     println("optimized shear approx.: ", round(final_shear, digits=2))
+    println("optimized ground approx.: ", round(final_ground, digits=2))
+
 end
 
 function bastankhah_shear()
