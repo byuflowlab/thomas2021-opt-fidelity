@@ -2,16 +2,16 @@ using FLOWFarm; const ff=FLOWFarm
 using CSV
 using DataFrames
 using Plots
-using StatsPlots
+pyplot()
 using LsqFit
 
-function obj_func(h, p; href=80.0, sref=8.0)
+function obj_func(h, p; href=90.0, sref=7.8)
     #href=80.0, sref=8.0, hg=0.0 for sowfa
     # for Bastankhah href = 70, sref = 9.0
     # constants
-    reference_height = href
-    reference_speed = sref
-    ground_height = p[2]
+    reference_height = p[3]
+    reference_speed = p[4]
+    ground_height = 0.0*p[2]
     
     # get number of points for fitting
     npoints = length(h)
@@ -31,7 +31,8 @@ end
 
 function sowfa_shear()
     # set data file name for LES data
-    datafile = "../inputfiles/wind-shear-les.txt"
+    # datafile = "../inputfiles/wind-shear-les.txt"
+    datafile = "../inputfiles/results/LES/high-ti/shear/uaveraged.txt"
     # load data to data frame
     df = DataFrame(CSV.File(datafile, header=0, datarow=2))
     # rename columns
@@ -40,11 +41,16 @@ function sowfa_shear()
     # optimize fit
     initial_shear = 0.1
     initial_ground = 0.0
-    fit = curve_fit(obj_func, df.h, df.s, [initial_shear, initial_ground])
+    initial_zref = 90.0
+    initial_uref = 7.8
+    # fit = curve_fit(obj_func, df.h[90.0-126.4/2 .< df.h .< 90.0+126.4/2], df.s[90.0-126.4/2 .< df.h .< 90.0+126.4/2], [initial_shear, initial_ground, initial_zref, initial_uref])
+    fit = curve_fit(obj_func, df.h, df.s, [initial_shear, initial_ground, initial_zref, initial_uref])
 
     # final_shear = 0.35
     final_shear = fit.param[1]
     final_ground = fit.param[2]
+    final_zref = fit.param[3]
+    final_uref = fit.param[4]
 
     # set resolution of model data
     res = 250
@@ -57,7 +63,7 @@ function sowfa_shear()
 
     # calculate speeds at each height
     for i in 1:res
-        v_calc[i] = ff.adjust_for_wind_shear(h_calc[i], df.s[4], df.h[4], final_ground, shear_model)
+        v_calc[i] = ff.adjust_for_wind_shear(h_calc[i], final_uref, final_zref, final_ground, shear_model)
     end
 
     # put model results in data frame
@@ -66,6 +72,8 @@ function sowfa_shear()
 
     # plot LES data and model results
     p = scatter(df.s, df.h, label="LES", legend=:topleft, xlabel="Wind Speed (m/s)", ylabel="Height (m)")
+    plot!([5.5,9.0],[90.0+126.4/2.0,90.0+126.4/2.0], label="Swept Area", c="Blue", linestyle=:dash)
+    plot!([5.5,9.0],[90.0-126.4/2.0,90.0-126.4/2.0], c="Blue", label="", linestyle=:dash)
     plot!(df2.s, df2.h, label="Model")
     display(p)
 
@@ -74,6 +82,8 @@ function sowfa_shear()
     println("optimized ground: ", final_ground)
     println("optimized shear approx.: ", round(final_shear, digits=2))
     println("optimized ground approx.: ", round(final_ground, digits=2))
+    println("optimized zref approx.: ", round(final_zref, digits=2))
+    println("optimized uref approx.: ", round(final_uref, digits=2))
 
 end
 

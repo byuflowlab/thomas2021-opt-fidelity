@@ -62,7 +62,7 @@ function sowfa_base_comparison(nsamplepoints=1)
 
     # format sowfa data for plotting
     turbine_powers_by_direction_sowfa = zeros((nstates, nturbines))
-    state_powers_sowfa = sum()
+    # state_powers_sowfa = sum()
     for i in 1:nstates
         for j in 1:nturbines
             turbine_powers_by_direction_sowfa[i, j] = sowfa_les_data[(i-1)*nturbines + j, 5]

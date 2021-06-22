@@ -5,6 +5,11 @@ using Plots
 using DataFrames
 using LsqFit
 
+function maxk!(ix, a, k; initialized=false)
+    partialsortperm!(ix, a, 1:k, rev=true, initialized=initialized)
+    @views collect(zip(ix[1:k], a[ix[1:k]]))
+end
+
 function format_sowfa_data(sowfa_les_data, nstates, nturbines)
 
     # initialize sowfa data containers
@@ -21,7 +26,7 @@ function format_sowfa_data(sowfa_les_data, nstates, nturbines)
     
 end
 
-function get_data()
+function get_data(;journal=false)
     # load Niayifar LES data 
     lesfile = "../inputfiles/results-thomas-2019/thomas2019-FinalDirectionalGeneratorPowerOutputBaseline.txt"
     sowfa_les_data = readdlm(lesfile, skipstart=0) 
@@ -30,71 +35,101 @@ function get_data()
     turbine_powers_by_direction_sowfa = format_sowfa_data(sowfa_les_data, 12, 38)
     # println(size(turbine_powers_by_direction_sowfa))
     # load plantenergy data
-    confile = "../inputfiles/results-thomas-2019/bp_turb_power_baseline.txt"
+    if journal
+        # confile = "../inputfiles/results-thomas-2019/bp_turb_power_baseline_journal.txt" # need to adjust, in kW
+        # confile = "../inputfiles/results-thomas-2019/bp_turb_power_baseline_journal_updated202106220921.txt"
+        # confile = "../inputfiles/results-thomas-2019/bp_turb_power_baseline_journal_updated_100rpts.txt"
+        # confile = "../inputfiles/results-thomas-2019/bp_turb_power_baseline_journal_updated_disNearwake.txt"
+        confile = "../inputfiles/results-thomas-2019/bp_turb_power_baseline_journal_ti_init_ff_fix.txt"
+    else
+        confile = "../inputfiles/results-thomas-2019/bp_turb_power_baseline.txt"
+    end
     turbine_powers_by_direction_thomas2019 = zeros((12,38))
-    turbine_powers_by_direction_thomas2019[:,:] = transpose(readdlm(confile, skipstart=1)).*1E3
+    turbine_powers_by_direction_thomas2019[:,:] = transpose(readdlm(confile, skipstart=1))# .*1E3 if using first filename
 
     return turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019
 end
 
-function run_flow_farm(;use_local_ti=true, nsamplepoints=1)
+function run_flow_farm(;use_local_ti=true, nsamplepoints=1, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, filename="../inputfiles/model-sets/round-farm-38-turbs-12-dirs.jl")
     # load FLOWFarm modelset
-    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs.jl")
-
+    include(filename)
+    nturbines = length(turbine_x)
+    turbine_xp = turbine_x[1:nturbines] .+ 2000.0
+    turbine_yp = turbine_y[1:nturbines] .+ 2000.0
+    if verbose
+        println("turb x: $turbine_xp")
+        println("turb y: $turbine_yp")
+    end
     if !use_local_ti
         localtimodel = ff.LocalTIModelNoLocalTI()
 
         # initialize model set
-        model_set = ff.WindFarmModelSet(wakedeficitmodel, wakedeflectionmodel, wakecombinationmodel, localtimodel)
+        model_set_internal = ff.WindFarmModelSet(wakedeficitmodel, wakedeflectionmodel, wakecombinationmodel, localtimodel)
+    else
+        model_set_internal = model_set
     end
     
     # rotor swept area sample points (normalized by rotor radius)
-    rotor_sample_points_y, rotor_sample_points_z = ff.rotor_sample_points(nsamplepoints)
+    rotor_sample_points_y, rotor_sample_points_z = ff.rotor_sample_points(nsamplepoints, alpha=alpha)
 
+    # set up wind resource 
+    if windrose == "nantucket"
+        wind_resource_local = wind_resource
+    else
+        windpeed = [8.0]
+        winddirection = [270.0*pi/180]
+        windprobability = [1.0]
+        windheight = [80.0]
+        windtis = [ambient_ti]
+
+        # initialize the wind resource definition
+        wind_resource_local = ff.DiscretizedWindResource(winddirection, windpeed, windprobability, windheight, air_density, windtis, wind_shear_model)
+
+    end
     # run FLOWFarm with local ti
-    turbine_powers_by_direction_ff = ff.calculate_state_turbine_powers(turbine_x, turbine_y, turbine_z, rotor_diameter,
+    turbine_powers_by_direction_ff = ff.calculate_state_turbine_powers(turbine_xp, turbine_yp, turbine_z, rotor_diameter,
         hub_height, turbine_yaw, ct_models, generator_efficiency, cut_in_speed,
-        cut_out_speed, rated_speed, rated_power, wind_resource, power_models, model_set,
-        rotor_sample_points_y=rotor_sample_points_y, rotor_sample_points_z=rotor_sample_points_z)
+        cut_out_speed, rated_speed, rated_power, wind_resource_local, power_models, model_set_internal,
+        rotor_sample_points_y=rotor_sample_points_y, rotor_sample_points_z=rotor_sample_points_z, shearfirst=shearfirst)
 
     return turbine_powers_by_direction_ff
 
 end
 
-function run_flow_farm(;use_local_ti=true, nsamplepoints=1, windspeedin=8.0, tiin=0.108)
+# function run_flow_farm(;use_local_ti=true, nsamplepoints=1, windspeedin=8.0, tiin=0.108)
 
-    # load FLOWFarm modelset
-    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs.jl")
+#     # load FLOWFarm modelset
+#     include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs.jl")
 
-    # re-set ambient turbulence intensity 
-    ambient_ti = tiin
-    ambient_tis = zeros(nstates) .+ ambient_ti
+#     # re-set ambient turbulence intensity 
+#     ambient_ti = tiin
+#     ambient_tis = zeros(nstates) .+ ambient_ti
 
-    # set wind speed to provided value(s)
-    windspeeds[:] .= windspeedin
-    # initialize the wind resource definition
-    wind_resource = ff.DiscretizedWindResource(winddirections, windspeeds, windprobabilities, measurementheight, air_density, ambient_tis, wind_shear_model)
+#     # set wind speed to provided value(s)
+#     windspeeds[:] .= windspeedin
+#     # initialize the wind resource definition
+#     wind_resource = ff.DiscretizedWindResource(winddirections, windspeeds, windprobabilities, measurementheight, air_density, ambient_tis, wind_shear_model)
 
-    # set up local ti model 
-    # if !use_local_ti
-    #     localtimodel = ff.LocalTIModelNoLocalTI()
+#     # set up local ti model 
+#     # if !use_local_ti
+#     #     localtimodel = ff.LocalTIModelNoLocalTI()
 
-    #     # initialize model set
-    #     model_set = ff.WindFarmModelSet(wakedeficitmodel, wakedeflectionmodel, wakecombinationmodel, localtimodel)
-    # end
+#     #     # initialize model set
+#     #     model_set = ff.WindFarmModelSet(wakedeficitmodel, wakedeflectionmodel, wakecombinationmodel, localtimodel)
+#     # end
     
-    # rotor swept area sample points (normalized by rotor radius)
-    rotor_sample_points_y, rotor_sample_points_z = ff.rotor_sample_points(nsamplepoints)
+#     # rotor swept area sample points (normalized by rotor radius)
+#     rotor_sample_points_y, rotor_sample_points_z = ff.rotor_sample_points(nsamplepoints)
 
-    # run FLOWFarm with local ti
-    turbine_powers_by_direction_ff = ff.calculate_state_turbine_powers(turbine_x, turbine_y, turbine_z, rotor_diameter,
-        hub_height, turbine_yaw, ct_models, generator_efficiency, cut_in_speed,
-        cut_out_speed, rated_speed, rated_power, wind_resource, power_models, model_set,
-        rotor_sample_points_y=rotor_sample_points_y, rotor_sample_points_z=rotor_sample_points_z)
+#     # run FLOWFarm with local ti
+#     turbine_powers_by_direction_ff = ff.calculate_state_turbine_powers(turbine_x, turbine_y, turbine_z, rotor_diameter,
+#         hub_height, turbine_yaw, ct_models, generator_efficiency, cut_in_speed,
+#         cut_out_speed, rated_speed, rated_power, wind_resource, power_models, model_set,
+#         rotor_sample_points_y=rotor_sample_points_y, rotor_sample_points_z=rotor_sample_points_z)
 
-    return turbine_powers_by_direction_ff
+#     return turbine_powers_by_direction_ff
 
-end
+# end
 
 function obj_func_internals(points, windspeed, ti)
     # get number of points for fitting
