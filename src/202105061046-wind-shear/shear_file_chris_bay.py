@@ -34,7 +34,7 @@ for val in np.unique(df_plane['z']):
     print(tmp_avg)
     avg.append(tmp_avg)
 z_vals = np.unique(df_plane['z'])
-shear_fit = (z_vals / 126.0) ** 0.10 * 8.1
+shear_fit = (z_vals / 90.0) ** 0.10 * 8.1
 
 np.savetxt("uaveraged.txt", np.c_[z_vals,avg])
 plt.figure()

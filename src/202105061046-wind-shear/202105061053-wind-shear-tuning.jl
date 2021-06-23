@@ -9,7 +9,7 @@ function obj_func(h, p; href=90.0, sref=7.8)
     #href=80.0, sref=8.0, hg=0.0 for sowfa
     # for Bastankhah href = 70, sref = 9.0
     # constants
-    reference_height = p[3]
+    reference_height = 90.0 #p[3]
     reference_speed = p[4]
     ground_height = 0.0*p[2]
     
@@ -39,21 +39,21 @@ function sowfa_shear()
     rename!(df,:Column1 => :h,:Column2 => :s)
 
     # optimize fit
-    initial_shear = 0.1
+    initial_shear = 0.3
     initial_ground = 0.0
     initial_zref = 90.0
     initial_uref = 7.8
-    # fit = curve_fit(obj_func, df.h[90.0-126.4/2 .< df.h .< 90.0+126.4/2], df.s[90.0-126.4/2 .< df.h .< 90.0+126.4/2], [initial_shear, initial_ground, initial_zref, initial_uref])
-    fit = curve_fit(obj_func, df.h, df.s, [initial_shear, initial_ground, initial_zref, initial_uref])
+    fit = curve_fit(obj_func, df.h[90.0-126.4/2 .< df.h .< 90.0+126.4/2], df.s[90.0-126.4/2 .< df.h .< 90.0+126.4/2], [initial_shear, initial_ground, initial_zref, initial_uref])
+    # fit = curve_fit(obj_func, df.h, df.s, [initial_shear, initial_ground, initial_zref, initial_uref])
 
     # final_shear = 0.35
     final_shear = fit.param[1]
     final_ground = fit.param[2]
-    final_zref = fit.param[3]
+    final_zref = 90.0 #fit.param[3]
     final_uref = fit.param[4]
 
     # set resolution of model data
-    res = 250
+    res = 300
     # initialize output
     v_calc = zeros(res)
     # initialize heights (input)
@@ -84,6 +84,9 @@ function sowfa_shear()
     println("optimized ground approx.: ", round(final_ground, digits=2))
     println("optimized zref approx.: ", round(final_zref, digits=2))
     println("optimized uref approx.: ", round(final_uref, digits=2))
+
+    # save model results for plotting later 
+    CSV.write("wind_shear_tuned.txt", df2, header=["Height (m)", "Speed (m/s) zref=$final_zref uref=$(round(final_uref, digits=2)) shear=$(round(final_shear, digits=3)) ground=0.0"])
 
 end
 
