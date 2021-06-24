@@ -1,5 +1,4 @@
 import FLOWFarm; const ff = FLOWFarm
-using Plots
 
 function wind_farm_setup(nturbines)
     # set initial turbine x and y locations
@@ -33,16 +32,16 @@ function wind_farm_setup(nturbines)
     # set flow parameters
     winddata = readdlm("../inputfiles/wind/windrose_nantucket_12dir.txt", ' ', skipstart=1)
     winddirections = winddata[:,1].*pi./180.0
-    windspeeds = zeros(length(winddirections)) .+ 7.82 # winddata[:,2]
+    windspeeds = zeros(length(winddirections)) .+ 7.87 # winddata[:,2]
     windprobabilities = winddata[:,3]
     nstates = length(windspeeds)
 
     air_density = 1.225  # kg/m^3 (from Jen)
     ambient_ti = 0.108
-    shearexponent = 0.09 #0.31
+    shearexponent = 0.091 #0.31
 
     ambient_tis = zeros(nstates) .+ ambient_ti
-    measurementheight = zeros(nstates) .+ 87.66 #80.0
+    measurementheight = zeros(nstates) .+ 90.0 #80.0
 
     # load power curve
     powerdata = readdlm("../inputfiles/turbines/nrel-5mw/NREL5MWCPCT.txt", skipstart=1)

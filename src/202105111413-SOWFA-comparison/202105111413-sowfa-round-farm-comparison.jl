@@ -1,7 +1,7 @@
 using FLOWFarm; const ff = FLOWFarm
 using DelimitedFiles
 using Statistics
-using Plots
+import PyPlot; const plt=PyPlot
 using DataFrames
 using LsqFit
 
@@ -200,36 +200,40 @@ function state_powers()
 
 end
 
-function errors(first, second; method="absolute")
-    return first .- second
-end
-
-function errors(first, second; method="normbyfirst")
-    absolute_errors = errors(first, second, method="absolute")
-    normalized_errors = absolute_errors./maximum(first)
-    return normalized_errors
-end
-
-function errors(first, second; method="normbyrow")
-    absolute_errors = errors(first, second, method="absolute")
-    normed_errors = zeros(size(absolute_errors))
-    for i in 1:length(first[:,1])
-        normed_errors[i,:] = absolute_errors[i,:]/maximum(absolute_errors[i,:])
+function errors(first, second; method="absolute", ratedpower=5E6)
+    if method == "absolute"
+        return first .- second
+    elseif method == "normalizedindividually"
+        absolute_errors = errors(first, second, method="absolute")
+        normalized_errors = absolute_errors./first
+        return normalized_errors
+    elseif method == "normbyrated"
+        absolute_errors = errors(first, second, method="absolute")
+        normalized_errors = absolute_errors./ratedpower
+        return normalized_errors
+    elseif method == "normbyfirst"
+        absolute_errors = errors(first, second, method="absolute")
+        normalized_errors = absolute_errors./maximum(first)
+        return normalized_errors
+    elseif method == "normbyrow"
+        absolute_errors = errors(first, second, method="absolute")
+        normalized_errors = zeros(size(absolute_errors))
+        for i in 1:length(first[:,1])
+            normalized_errors[i,:] = absolute_errors[i,:]./maximum(absolute_errors[i,:])
+        end
+        return normalized_errors
+    elseif method == "normbyselfrow"
+        firstnormed = zeros(size(first))
+        secondnormed = zeros(size(second))
+        for i in 1:length(first[:,1])
+            firstnormed[i,:] = firstnormed[i,:]/maximum(firstnormed[i,:])
+            secondnormed[i,:] = secondnormed[i,:]/maximum(secondnormed[i,:])
+        end
+    
+        normalized_errors = errors(firstnormed, secondnormed, method="absolute")
+    
+        return normalized_errors
     end
-    return normalized_errors
-end
-
-function errors(first, second; method="normbyselfrow")
-    firstnormed = zeros(size(first))
-    secondnormed = zeros(size(second))
-    for i in 1:length(first[:,1])
-        firstnormed[i,:] = firstnormed[i,:]/maximum(firstnormed[i,:])
-        secondnormed[i,:] = secondnormed[i,:]/maximum(secondnormed[i,:])
-    end
-
-    normalized_errors = errors(firstnormed, secondnormed, method="absolute")
-
-    return normalized_errors
 end
 
 function circleshape(h, k, r)
@@ -260,22 +264,77 @@ end
 # function to compare directions 
 function sowfa_base_comparison(nsamplepoints=1)
 
+    # load wind farm information 
+    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs.jl")
+
     # load data
     turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019 = get_data()
 
     # run FLOWFarm
-    # turbine_powers_by_direction_ffti = run_flow_farm(nsamplepoints=nsamplepoints)
+    turbine_powers_by_direction_ff = run_flow_farm(nsamplepoints=nsamplepoints)
 
     # calulate various errors types 
-    absolute_error = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019, method="absolute")
-    normbyfirst_error = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019, method="absolute")
-    normbyrow_error = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019, method="normbyrow")
-    normbyselfrow_error = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019, method="normbyselfrow")
+    absoluteerror = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="absolute")
+    normbymax = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyfirst")
+    normbyrated = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyrated")
+    normindividually = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normalizedindividually")
 
-    comparison = [absolute_error, normbyfirst_error, normbyrow_error, normbyselfrow_error]
-    names = ["absolute", "normbyfirst", "normbyrow", "normbyselfrow"]
-    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs.jl")
-    plot_comparisons(turbinex, turbiney, rotordiameter, comparisons, names)
+    println(mean(normbymax))
+    println(maximum(normbymax))
+
+    # nturbines = length(turbine_x)
+    # fig, ax = plt.subplots(figsize=(15, 15))
+    # ticks = -250:25:251
+    # d = Dict(:shrink => 1.0, :aspect=>50, :ticks=>ticks, :orientation=>"vertical")
+    # im, cbar = heatmap(normbymax, 1:nturbines, winddirections, ax=ax, cmap="bwr", 
+    #         cbarlabel="Turbine Power Error", cbar_kw=d)
+    # # cbar.set_label("Turbine Power Error, $\%$", rotation=90)
+    # ax.set_ylabel("Direction, degrees")
+    # ax.set_xlabel("Turbine")
+    # plot error on wind farm 
+    # fig, ax = plt.subplots()
+    # ff.plotlayout!(ax, turbine_x, turbine_y, rotor_diameter)
+    # ax.set(xlim=[-2500, 2500], ylim=[-2500, 2500], aspect="equal")
+
+    # fig, ax = plt.subplots(figsize=(15, 15))
+    # im, cbar = heatmap(turb_error, 1:nturbines, wind_directions, ax=ax, cmap="bwr", cbarlabel="Turbine Power Error")
+    # # cbar.set_label("Turbine Power Error, $\%$", rotation=90)
+    # ax.set_ylabel("Direction, degrees")
+    # # ax.set_xlabel("Turbine")
+    # fig, ax = plt.subplots()
+    # im = ax.imshow(norbed_by_max)
+
+    # # We want to show all ticks...
+    # ax.set_yticks(1:length(winddirections))
+    # ax.set_xticks(1:nturbines)
+    # # ... and label them with the respective list entries
+    # ax.set_yticklabels(winddirections)
+    # ax.set_xticklabels(1:nturbines)
+
+    # # Rotate the tick labels and set their alignment.
+    # plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+    #         rotation_mode="anchor")
+
+    # # Loop over data dimensions and create text annotations.
+    # for i = 1:nturbines
+    #     for j = 1:length(winddirections)
+    #         text = ax.text(j, i, norbed_by_max[i, j],
+    #                     ha="center", va="center", color="w")
+    #     end
+    # end
+
+    # ax.set_title("Harvest of local farmers (in tons/year)")
+    # fig.tight_layout()
+    # plt.show()
+
+    # normalizedindividually = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normalizedindividually")
+    # normbyrow_error = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyrow")
+    # normbyselfrow_error = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyselfrow")
+
+    # comparison = [absolute_error, normbyfirst_error, normbyrow_error, normbyselfrow_error]
+    # names = ["absolute", "normbyfirst", "normbyrow", "normbyselfrow"]
+    # include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs.jl")
+    # plot_comparisons(turbinex, turbiney, rotordiameter, comparisons, names)
 
     
     
@@ -304,4 +363,64 @@ function sowfa_base_comparison(nsamplepoints=1)
     # heatmap(diff_pe_ff_turbs, xticks=1:2:nturbines, yticks=1:nstates, seriescolor=colorgrad, categorical=false, clim=(-maximum(abs.(diff_pe_ff_turbs)),maximum(abs.(diff_pe_ff_turbs))))
     # # df = DataFrame(Dir=wind_resource.wind_directions.*180/pi, SOWFA=state_powers_sowfa.*1E-6, PlantEnergy=thomas2019_bp_data, FLOWFarm=state_powers_ff.*1E-6, Error=differences_directions.*100)
     # println(df)
+end
+
+function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true)
+    """
+    Create a heatmap from a numpy array and two lists of labels.
+
+    Arguments:
+        data       : A 2D numpy array of shape (N,M)
+        row_labels : A list or array of length N with the labels
+                     for the rows
+        col_labels : A list or array of length M with the labels
+                     for the columns
+    Optional arguments:
+        ax         : A matplotlib.axes.Axes instance to which the heatmap
+                     is plotted. If not provided, use current axes or
+                     create a new one.
+        cbar_kw    : A dictionary with arguments to
+                     :meth:`matplotlib.Figure.colorbar`.
+        cbarlabel  : The label for the colorbar
+    All other arguments are directly passed on to the imshow call.
+    """
+
+    if !ax
+        ax = plt.gca()
+    end
+
+    # Plot the heatmap
+    im = ax.imshow(data)
+
+    # Create colorbar
+    if use_cbar
+        cbar = ax.figure.colorbar(im; ax=ax, cbar_kw...)
+        cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+    else
+        cbar = nothing
+    end
+    # We want to show all ticks...
+    ax.set_xticks(np.arange(data.shape[2]))
+    ax.set_yticks(np.arange(data.shape[1]))
+    # ... and label them with the respective list entries.
+    ax.set_xticklabels(col_labels)
+    ax.set_yticklabels(row_labels)
+
+    # Let the horizontal axes labeling appear on top.
+    ax.tick_params(top=True, bottom=False, labeltop=False, labelbottom=true)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=-0, ha="center", rotation_mode="anchor")
+
+    # Turn spines off and create white grid.
+    for spine in ax.spines.items()
+        spine.set_visible(False)
+    end
+
+    ax.set_xticks((1:data.shape[1]+1).-.5, minor=true)
+    ax.set_yticks((1:data.shape[0]+1).-.5, minor=true)
+    ax.grid(which="minor", color="w", linestyle="-", linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    return im, cbar
 end
