@@ -39,11 +39,12 @@ function sowfa_shear()
     rename!(df,:Column1 => :h,:Column2 => :s)
 
     # optimize fit
-    initial_shear = 0.3
+    initial_shear = 0.9
     initial_ground = 0.0
     initial_zref = 90.0
-    initial_uref = 7.8
-    fit = curve_fit(obj_func, df.h[90.0-126.4/2 .< df.h .< 90.0+126.4/2], df.s[90.0-126.4/2 .< df.h .< 90.0+126.4/2], [initial_shear, initial_ground, initial_zref, initial_uref])
+    initial_uref = 7.9
+    # fit = curve_fit(obj_func, df.h[90.0-126.4/2 .< df.h .< 90.0+126.4/2], df.s[90.0-126.4/2 .< df.h .< 90.0+126.4/2], [initial_shear, initial_ground, initial_zref, initial_uref])
+    fit = curve_fit(obj_func, df.h[10 .< df.h ], df.s[10 .< df.h ], [initial_shear, initial_ground, initial_zref, initial_uref])
     # fit = curve_fit(obj_func, df.h, df.s, [initial_shear, initial_ground, initial_zref, initial_uref])
 
     # final_shear = 0.35
