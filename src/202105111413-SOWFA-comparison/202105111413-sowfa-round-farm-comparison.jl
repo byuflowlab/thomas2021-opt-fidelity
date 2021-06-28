@@ -6,6 +6,7 @@ using DataFrames
 using LsqFit
 using Colors, ColorSchemes
 using Distributions
+using CSV
 
 function maxk!(ix, a, k; initialized=false)
     partialsortperm!(ix, a, 1:k, rev=true, initialized=initialized)
@@ -263,6 +264,14 @@ function plot_comparisons(turbinex, turbiney, rotordiameter, comparisons, names)
     display(p)
 end
 
+function custum_color_map()
+    colors = [colorant"#BDB8AD", colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"]
+    # @pyimport matplotlib.colors as matcolors
+    # cmap = matcolors.ListedColormap([(1,0,0),(0,1,0),(0,0,1)],"A")
+
+    return plt.ColorMap("BlueGrayOrange", [colors[3],colors[1],colors[4]])
+end
+
 # function to compare directions 
 function sowfa_base_comparison(nsamplepoints=1)
 
@@ -282,13 +291,19 @@ function sowfa_base_comparison(nsamplepoints=1)
     normindividually = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normalizedindividually")
 
     data = convert.(Int64, round.(normbymax.*100, digits=0))
+
+    # save data 
+    dfff = DataFrame(turbine_powers_by_direction_ff', :auto)
+    CSV.write("turbine_power_ff_$(nsamplepoints)pts.txt", dfff, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+
     nturbines = length(turbine_x)
     fig, ax = plt.subplots(figsize=(15, 15))
     ticks = minimum(data):5:maximum(data)
     colors = ["#BDB8AD", "#85C0F9", "#0F2080", "#F5793A", "#A95AA1", "#382119"]
-    cs1 = ColorScheme(range(colorant"#0F2080", colorant"#F5793A", length=10)).colors
-    colormap = [(x.r, x.g, x.b) for x in cs1]
-    d = Dict(:shrink => 0.47, :ticks=>ticks, :aspect=>20, :orientation=>"horizontal", :cmap=>ColorMap(cs1))
+    # cs1 = ColorScheme(range(colorant"#0F2080", colorant"#F5793A", length=10)).colors
+    # colormap = [(x.r, x.g, x.b) for x in cs1]
+    cmap = custum_color_map()
+    d = Dict(:shrink => 0.47, :ticks=>ticks, :aspect=>20, :orientation=>"horizontal", :cmap=>cmap)
     
     rowlabels = convert.(Int64, round.((winddirections.*180.0./pi), digits=0))
 
