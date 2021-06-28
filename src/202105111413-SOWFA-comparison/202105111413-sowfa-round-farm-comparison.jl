@@ -4,6 +4,8 @@ using Statistics
 import PyPlot; const plt=PyPlot
 using DataFrames
 using LsqFit
+using Colors, ColorSchemes
+using Distributions
 
 function maxk!(ix, a, k; initialized=false)
     partialsortperm!(ix, a, 1:k, rev=true, initialized=initialized)
@@ -279,16 +281,21 @@ function sowfa_base_comparison(nsamplepoints=1)
     normbyrated = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyrated")
     normindividually = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normalizedindividually")
 
-    println(mean(normbymax))
-    println(maximum(normbymax))
+    data = convert.(Int64, round.(normbymax.*100, digits=0))
+    nturbines = length(turbine_x)
+    fig, ax = plt.subplots(figsize=(15, 15))
+    ticks = minimum(data):5:maximum(data)
+    colors = ["#BDB8AD", "#85C0F9", "#0F2080", "#F5793A", "#A95AA1", "#382119"]
+    cs1 = ColorScheme(range(colorant"#0F2080", colorant"#F5793A", length=10)).colors
+    colormap = [(x.r, x.g, x.b) for x in cs1]
+    d = Dict(:shrink => 0.47, :ticks=>ticks, :aspect=>20, :orientation=>"horizontal", :cmap=>ColorMap(cs1))
+    
+    rowlabels = convert.(Int64, round.((winddirections.*180.0./pi), digits=0))
 
-    # nturbines = length(turbine_x)
-    # fig, ax = plt.subplots(figsize=(15, 15))
-    # ticks = -250:25:251
-    # d = Dict(:shrink => 1.0, :aspect=>50, :ticks=>ticks, :orientation=>"vertical")
-    # im, cbar = heatmap(normbymax, 1:nturbines, winddirections, ax=ax, cmap="bwr", 
-    #         cbarlabel="Turbine Power Error", cbar_kw=d)
-    # # cbar.set_label("Turbine Power Error, $\%$", rotation=90)
+    im, cbar = heatmap(data, rowlabels, 1:nturbines, ax=ax,
+            cbarlabel="Turbine Power Percent Error", cbar_kw=d)
+    
+    # cbar.set_label("Turbine Power Error, $\%$", rotation=90)
     # ax.set_ylabel("Direction, degrees")
     # ax.set_xlabel("Turbine")
     # plot error on wind farm 
@@ -365,7 +372,7 @@ function sowfa_base_comparison(nsamplepoints=1)
     # println(df)
 end
 
-function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true)
+function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true, labelpixels=true, fontsize=10, vcolor="w", edgecolor="w")
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -382,45 +389,125 @@ function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarl
         cbar_kw    : A dictionary with arguments to
                      :meth:`matplotlib.Figure.colorbar`.
         cbarlabel  : The label for the colorbar
-    All other arguments are directly passed on to the imshow call.
+    All other arguments are directly passed on to the pcolormesh call.
     """
 
-    if !ax
+    if ax === nothing
         ax = plt.gca()
     end
 
     # Plot the heatmap
-    im = ax.imshow(data)
+    im = ax.pcolormesh(data, edgecolor=edgecolor, cmap=cbar_kw[:cmap], vmin=minimum(cbar_kw[:ticks]), vmax=maximum(cbar_kw[:ticks]))
 
     # Create colorbar
     if use_cbar
         cbar = ax.figure.colorbar(im; ax=ax, cbar_kw...)
-        cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+        cbar.ax.set_xlabel(cbarlabel, rotation=0, va="bottom", labelpad=16)
     else
         cbar = nothing
     end
-    # We want to show all ticks...
-    ax.set_xticks(np.arange(data.shape[2]))
-    ax.set_yticks(np.arange(data.shape[1]))
-    # ... and label them with the respective list entries.
-    ax.set_xticklabels(col_labels)
-    ax.set_yticklabels(row_labels)
+
+    # make pixels square
+    ax.set(aspect="equal")
+
+    # set tick labels and locations for x axis
+    ax.set(xticklabels=col_labels, xticks=(1:length(col_labels)).-0.5)
 
     # Let the horizontal axes labeling appear on top.
-    ax.tick_params(top=True, bottom=False, labeltop=False, labelbottom=true)
+    ax.tick_params(top=true, bottom=false, labeltop=true, labelbottom=false)
 
-    # Rotate the tick labels and set their alignment.
-    plt.setp(ax.get_xticklabels(), rotation=-0, ha="center", rotation_mode="anchor")
+    # set tick labels and locations for y axis
+    ax.set(yticklabels=row_labels, yticks=(1:length(row_labels)).-0.5)
 
-    # Turn spines off and create white grid.
-    for spine in ax.spines.items()
-        spine.set_visible(False)
+    # reverse y axis to make the result more table-like
+    ax.invert_yaxis()
+
+    # remove ticks
+    ax.tick_params(which="minor", top=false, right=false, bottom=false, left=false)
+    ax.tick_params(which="major", top=false, right=false, bottom=false, left=false)
+
+    # removes spines
+    ax.spines["right"].set_visible(false)
+    ax.spines["top"].set_visible(false)
+    ax.spines["bottom"].set_visible(false)
+    ax.spines["left"].set_visible(false)
+
+    # label the pixels
+    if labelpixels
+        for i = 1:length(row_labels)
+            for j = 1:length(col_labels)
+                ax.text(j-0.5,i-0.5,data[i,j],
+                        ha="center",va="center",
+                        size=fontsize,color=vcolor)
+            end
+        end
     end
-
-    ax.set_xticks((1:data.shape[1]+1).-.5, minor=true)
-    ax.set_yticks((1:data.shape[0]+1).-.5, minor=true)
-    ax.grid(which="minor", color="w", linestyle="-", linewidth=3)
-    ax.tick_params(which="minor", bottom=False, left=False)
 
     return im, cbar
 end
+
+# function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true)
+#     """
+#     Create a heatmap from a numpy array and two lists of labels.
+
+#     Arguments:
+#         data       : A 2D numpy array of shape (N,M)
+#         row_labels : A list or array of length N with the labels
+#                      for the rows
+#         col_labels : A list or array of length M with the labels
+#                      for the columns
+#     Optional arguments:
+#         ax         : A matplotlib.axes.Axes instance to which the heatmap
+#                      is plotted. If not provided, use current axes or
+#                      create a new one.
+#         cbar_kw    : A dictionary with arguments to
+#                      :meth:`matplotlib.Figure.colorbar`.
+#         cbarlabel  : The label for the colorbar
+#     All other arguments are directly passed on to the imshow call.
+#     """
+#     df = DataFrame(data, :auto)
+#     println(df)
+#     if ax === nothing
+#         ax = plt.gca()
+#     end
+
+#     # Plot the heatmap
+#     im = ax.imshow(data, interpolation="none")
+
+#     # Create colorbar
+#     if use_cbar
+#         cbar = ax.figure.colorbar(im; ax=ax, cbar_kw...)
+#         cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+#     else
+#         cbar = nothing
+#     end
+#     # We want to show all ticks...
+#     ax.set_xticks(0:(size(data)[2]-1))
+#     ax.set_yticks(0:(size(data)[1]-1))
+#     # ... and label them with the respective list entries.
+#     println(col_labels)
+#     println(row_labels)
+#     ax.set_xticklabels(col_labels)
+#     ax.set_yticklabels(row_labels)
+
+#     # Let the horizontal axes labeling appear on top.
+#     ax.tick_params(top=true, bottom=false, labeltop=true, labelbottom=false)
+
+#     # Rotate the tick labels and set their alignment.
+#     plt.setp(ax.get_xticklabels(), rotation=-0, ha="center", rotation_mode="anchor")
+
+#     # Turn spines off and create white grid.
+#     ax.spines["right"].set_visible(false)
+#     ax.spines["top"].set_visible(false)
+#     ax.spines["bottom"].set_visible(false)
+#     ax.spines["left"].set_visible(false)
+
+#     ax.set_xticks((1:size(data)[2]).-.5, minor=true)
+#     ax.set_yticks((1:size(data)[1]).-.5, minor=true)
+#     ax.grid(which="minor", color="w", linestyle="-", linewidth=3)
+
+#     ax.tick_params(which="minor", top=false, right=false, bottom=false, left=false)
+#     ax.tick_params(which="major", top=false, right=false, bottom=false, left=false)
+
+#     return im, cbar
+# end
