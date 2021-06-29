@@ -1,8 +1,7 @@
 using FLOWFarm; const ff=FLOWFarm
 using CSV
 using DataFrames
-using Plots
-pyplot()
+import PyPlot; const plt=PyPlot
 using LsqFit
 
 function obj_func(h, p; href=90.0, sref=7.8)
@@ -29,10 +28,12 @@ function obj_func(h, p; href=90.0, sref=7.8)
     return v_calc
 end
 
-function sowfa_shear()
+function sowfa_shear(;case="high-ti")
     # set data file name for LES data
     # datafile = "../inputfiles/wind-shear-les.txt"
-    datafile = "../inputfiles/results/LES/high-ti/shear/uaveraged.txt"
+    
+    datafile = "../inputfiles/results/LES/$(case)/shear/uaveraged.txt"
+    
     # load data to data frame
     df = DataFrame(CSV.File(datafile, header=0, datarow=2))
     # rename columns
@@ -44,7 +45,7 @@ function sowfa_shear()
     initial_zref = 90.0
     initial_uref = 7.9
     # fit = curve_fit(obj_func, df.h[90.0-126.4/2 .< df.h .< 90.0+126.4/2], df.s[90.0-126.4/2 .< df.h .< 90.0+126.4/2], [initial_shear, initial_ground, initial_zref, initial_uref])
-    fit = curve_fit(obj_func, df.h[10 .< df.h ], df.s[10 .< df.h ], [initial_shear, initial_ground, initial_zref, initial_uref])
+    fit = curve_fit(obj_func, df.h[5 .< df.h ], df.s[5 .< df.h ], [initial_shear, initial_ground, initial_zref, initial_uref])
     # fit = curve_fit(obj_func, df.h, df.s, [initial_shear, initial_ground, initial_zref, initial_uref])
 
     # final_shear = 0.35
@@ -72,11 +73,14 @@ function sowfa_shear()
     rename!(df2,:x1 => :h,:x2 => :s)
 
     # plot LES data and model results
-    p = scatter(df.s, df.h, label="LES", legend=:topleft, xlabel="Wind Speed (m/s)", ylabel="Height (m)")
-    plot!([5.5,9.0],[90.0+126.4/2.0,90.0+126.4/2.0], label="Swept Area", c="Blue", linestyle=:dash)
-    plot!([5.5,9.0],[90.0-126.4/2.0,90.0-126.4/2.0], c="Blue", label="", linestyle=:dash)
-    plot!(df2.s, df2.h, label="Model")
-    display(p)
+    fig, ax = plt.subplots()
+    ax.scatter(df.s, df.h, label="LES")
+    ax.plot([5.5,9.0],[90.0+126.4/2.0,90.0+126.4/2.0], label="Swept Area", c="Blue", linestyle="--")
+    ax.plot([5.5,9.0],[90.0-126.4/2.0,90.0-126.4/2.0], c="Blue", label="", linestyle="--")
+    ax.plot(df2.s, df2.h, label="Model")
+    ax.set_xlabel("Wind Speed (m/s)")
+    ax.set_ylabel("Height (m)")
+    plt.show()
 
     # print optimized shear value
     println("optimized shear: ", final_shear)
@@ -87,7 +91,7 @@ function sowfa_shear()
     println("optimized uref approx.: ", round(final_uref, digits=2))
 
     # save model results for plotting later 
-    CSV.write("wind_shear_tuned.txt", df2, header=["Height (m)", "Speed (m/s) zref=$final_zref uref=$(round(final_uref, digits=2)) shear=$(round(final_shear, digits=3)) ground=0.0"])
+    CSV.write("wind-shear-tuned-$(case).txt", df2, header=["Height (m)", "Speed (m/s) zref=$final_zref uref=$(round(final_uref, digits=2)) shear=$(round(final_shear, digits=3)) ground=0.0"])
 
 end
 

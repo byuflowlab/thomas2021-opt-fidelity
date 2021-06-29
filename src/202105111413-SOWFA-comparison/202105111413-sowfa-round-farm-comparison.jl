@@ -53,7 +53,7 @@ function get_data(;journal=false)
     return turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019
 end
 
-function run_flow_farm(;use_local_ti=true, nsamplepoints=1, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, filename="../inputfiles/model-sets/round-farm-38-turbs-12-dirs.jl")
+function run_flow_farm(;use_local_ti=true, nsamplepoints=1, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, filename="../inputfiles/model-sets/round-farm-38-turbs-12-dirs-high-ti.jl")
     # load FLOWFarm modelset
     include(filename)
     nturbines = length(turbine_x)
@@ -276,7 +276,7 @@ end
 function sowfa_base_comparison(nsamplepoints=1)
 
     # load wind farm information 
-    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs.jl")
+    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-high-ti.jl")
 
     # load data
     turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019 = get_data()
@@ -342,6 +342,9 @@ function sowfa_base_comparison(nsamplepoints=1)
     #     for j = 1:length(winddirections)
     #         text = ax.text(j, i, norbed_by_max[i, j],
     #                     ha="center", va="center", color="w")
+
+
+
     #     end
     # end
 

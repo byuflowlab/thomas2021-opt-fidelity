@@ -1,14 +1,15 @@
 import PyPlot; const plt = PyPlot
 using DataFrames 
 using CSV
-using PyPlot, Color
+using PyPlot
+using Colors, ColorSchemes
 
 function custum_color_map()
     colors = [colorant"#BDB8AD", colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"]
     # @pyimport matplotlib.colors as matcolors
     # cmap = matcolors.ListedColormap([(1,0,0),(0,1,0),(0,0,1)],"A")
 
-    return ColorMap("BlueGrayOrange", [colors[3],colors[1],colors[4]])
+    return plt.ColorMap("BlueGrayOrange", [colors[3],colors[1],colors[4]])
 end
 
 function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true, labelpixels=true, fontsize=10, vcolor="w", edgecolor="w")
@@ -90,11 +91,11 @@ function turbine_error(colors, fontsize; showfigs=false, savefigs=false, image_d
     
 end
 
-function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="windshear.pdf")
+function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="windshear-", case="high-ti")
 
     # load data 
-    df_model = DataFrame(CSV.File("./image_data/wind_shear/wind_shear_tuned.txt", datarow=2, header=false))
-    df_les = DataFrame(CSV.File("./image_data/wind_shear/wind_shear_les.txt", datarow=2, header=false))
+    df_model = DataFrame(CSV.File("./image-data/wind-shear/$(case)/wind-shear-tuned-$(case).txt", datarow=2, header=false))
+    df_les = DataFrame(CSV.File("./image-data/wind-shear/$(case)/wind-shear-les-$(case).txt", datarow=2, header=false))
 
     # name columns 
     rename!(df_model,:Column1 => :h,:Column2 => :s)
@@ -115,12 +116,21 @@ function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, ima
 
     # plot les data 
     ax.scatter(df_les.s, df_les.h, color=colors[2])
-    ax.annotate("LES", (7.75, 125), color=colors[2], alpha=1.0, size=fontsize)
+
+    if case=="high-ti"
+        ax.annotate("LES", (7.75, 125), color=colors[2], alpha=1.0, size=fontsize)
+    elseif case=="low-ti"
+        ax.annotate("LES", (7.9, 125), color=colors[2], alpha=1.0, size=fontsize)
+    end
 
     # plot model 
     ax.plot(df_model.s, df_model.h, color=colors[3])
-    ax.annotate("Curve Fit", (8.15, 95), color=colors[3], alpha=1.0, size=fontsize)
 
+    if case=="high-ti"
+        ax.annotate("Curve Fit", (8.15, 95), color=colors[3], alpha=1.0, size=fontsize)
+    elseif case=="low-ti"
+        ax.annotate("Curve Fit", (8.25, 95), color=colors[3], alpha=1.0, size=fontsize) 
+    end
     # add rotor swept area 
     # ax.plot([minimum(df_model.s), maximum(df_model.s)], [swept_top, swept_top], color=colors[1], linestyle="--")
     # ax.plot([minimum(df_model.s), maximum(df_model.s)], [swept_bottom, swept_bottom], color=colors[1], linestyle="--")
@@ -159,7 +169,7 @@ function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, ima
         show()
     end
     if savefigs
-        plt.savefig(image_directory*image_name, transparent=true)
+        plt.savefig(image_directory*image_name*case*".pdf", transparent=true)
     end
 end
 function generate_images_for_publication()
@@ -168,6 +178,7 @@ function generate_images_for_publication()
     savefigs = true 
     showfigs = true
 
-    wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
+    wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti")
+    wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
 
 end
