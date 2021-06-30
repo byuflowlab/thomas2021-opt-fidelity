@@ -1,7 +1,7 @@
 using FLOWFarm; const ff = FLOWFarm
 using DelimitedFiles
 using Statistics
-using Plots
+import PyPlot; const plt = PyPlot
 
 function calculate_state_turbine_powers(turbine_x, turbine_y, turbine_z, rotor_diameter,
     hub_height, turbine_yaw, ct_model, generator_efficiency, cut_in_speed,
@@ -77,5 +77,70 @@ function sowfa_base_comparison(nsamplepoints=1)
     difference_turbines = turbine_powers_by_direction_sowfa - turbine_powers_by_direction_ff
 
     heatmap(difference, xticks=1:2:nturbines, yticks=1:nstates, c=:cividis)
+
+end
+
+function find_upstream_turbines(turbinex, turbiney, winddirection, diameter)
+
+    # find wake count for all turbines in given wind direction 
+    wake_count = ff.number_of_wakes_iec(turbinex, turbiney, winddirection, diameter)
+
+    # return unwaked turbines 
+    return collect(1:length(turbinex))[wake_count .== 0]
+
+end
+
+function tune_flowfarm_to_sowfa(;case="low-ti")
+
+    # include functions from other files 
+    include("../202105111413-SOWFA-comparison/202105111413-sowfa-round-farm-comparison.jl")
+
+    # load sowfa data
+    turbine_powers_by_direction_sowfa, _ = get_data(case=case)
+
+    # set path to model set 
+    model_set_file = "../inputfiles/model-sets/round-farm-38-turbs-12-dirs-$(case).jl"
+
+    # load flowfarm set up
+    include(model_set_file)
+
+    # get the number of wind directions and wind turbines 
+    ndirections = length(winddirections)
+    nturbines = length(turbine_x)
+
+    # initialize arrays for tuned wind speed and TI values
+    opt_speeds = zeros(ndirections)
+    opt_tis = zeros(ndirections)
+
+    # tune inflow wind speed for each direction using front turbines
+    for i = 1:ndirections
+        # find upstream turbines 
+        upstream_turbines = find_upstream_turbines(turbine_x, turbine_y, winddirections[i], rotor_diameter[1])
+        # println("dir = $(winddirections[i]), upstream turbines = $(upstream_turbines)")
+
+        # get sowfa data for turbines of interest 
+        upstream_turbines_power = turbine_powers_by_direction_sowfa[i, upstream_turbines]
+
+        # run least squared fit to the sowfa data 
+        obj_func_windspeed_local(x1, x2) = obj_func_windspeed(x1, x2, ti=0.05589339140297106, case="low-ti", wd=i)
+        fit = curve_fit(obj_func_windspeed_local, upstream_turbines, upstream_turbines_power, [8.0])
+
+        # store result
+        opt_tis[i] = fit.param[1]
+        println(opt_tis[i])
+
+    end
+    println(opt_tis)
+
+    # tune local TI for each direction using all turbines 
+    for i = 1:ndirections 
+        # select all turbines 
+        downstream_turbines = collect(1:nturbines)
+
+        # run least squared fit to the sowfa data 
+
+        # store result
+
+    end
 
 end
