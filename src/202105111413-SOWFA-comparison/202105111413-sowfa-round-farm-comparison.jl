@@ -29,7 +29,7 @@ function format_sowfa_data(sowfa_les_data, nstates, nturbines)
     
 end
 
-function get_data(;journal=false)
+function get_data(;journal=false,case="high-ti")
     # load Niayifar LES data 
     lesfile = "../inputfiles/results-thomas-2019/thomas2019-FinalDirectionalGeneratorPowerOutputBaseline.txt"
     sowfa_les_data = readdlm(lesfile, skipstart=0) 
