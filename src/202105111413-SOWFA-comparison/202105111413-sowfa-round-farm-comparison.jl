@@ -187,7 +187,7 @@ function obj_func_windspeed(points, parameters; ti=0.05589339140297106, case="lo
 end
 
 function obj_func_ti(points, parameters; windspeed=8.466323515677749, case="low-ti", wd=0)
-    return obj_func_internals(points, windspeed, parameters[1], case, wd)
+    return obj_func_internals(points, windspeed, parameters[1]si, case, wd)
 end
 
 function tune_flow_farm()

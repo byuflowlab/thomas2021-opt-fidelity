@@ -29,18 +29,25 @@ function wind_farm_setup(nturbines)
     nrotorpoints = 100
     rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints)
 
+    # load tuned wind speed and ambient ti data 
+    windandtidata = readdlm("../202105181144-38-turb-tune-to-sowfa/tuned-parameters-low-ti.csv", ',', skipstart=1)
+    println(windandtidata)
+    tunedwindspeeds = windandtidata[:, 2]
+    tunedti = windandtidata[:,3]
+
     # set flow parameters
     winddata = readdlm("../inputfiles/wind/windrose_nantucket_12dir.txt", ' ', skipstart=1)
     winddirections = winddata[:,1].*pi./180.0
-    windspeeds = zeros(length(winddirections)) .+ 7.99 # winddata[:,2]
+    nstates = length(winddirections)
+    windspeeds = tunedwindspeeds  #zeros(nstates) .+ mean(tunedwindspeeds) #zeros(length(winddirections)) .+ 7.99 # winddata[:,2]
     windprobabilities = winddata[:,3]
-    nstates = length(windspeeds)
+    
 
     air_density = 1.225  # kg/m^3 (from Jen)
     ambient_ti = 0.05
     shearexponent = 0.084 #0.31
 
-    ambient_tis = zeros(nstates) .+ ambient_ti
+    ambient_tis =  tunedti #zeros(nstates) .+ mean(tunedti) #zeros(nstates) .+ ambient_ti
     measurementheight = zeros(nstates) .+ 90.0 #80.0
 
     # load power curve
