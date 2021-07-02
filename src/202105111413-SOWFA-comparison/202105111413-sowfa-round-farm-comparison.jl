@@ -322,8 +322,8 @@ function sowfa_base_comparison(nsamplepoints=1; case="high-ti")
     normbymax = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyfirst")
     normbyrated = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyrated")
     normindividually = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normalizedindividually")
-
-    data = convert.(Int64, round.(normbymax.*100, digits=0))
+    turberror = normindividually
+    data = convert.(Int64, round.(turberror.*100, digits=0))
 
     # save data 
     dfff = DataFrame(turbine_powers_by_direction_ff', :auto)

@@ -1,4 +1,5 @@
 import FLOWFarm; const ff = FLOWFarm
+using Statistics
 
 function wind_farm_setup(nturbines)
     # set initial turbine x and y locations
@@ -31,23 +32,24 @@ function wind_farm_setup(nturbines)
 
     # load tuned wind speed and ambient ti data 
     windandtidata = readdlm("../202105181144-38-turb-tune-to-sowfa/tuned-parameters-low-ti.csv", ',', skipstart=1)
-    println(windandtidata)
     tunedwindspeeds = windandtidata[:, 2]
-    tunedti = windandtidata[:,3]
+    
 
     # set flow parameters
     winddata = readdlm("../inputfiles/wind/windrose_nantucket_12dir.txt", ' ', skipstart=1)
     winddirections = winddata[:,1].*pi./180.0
     nstates = length(winddirections)
-    windspeeds = tunedwindspeeds  #zeros(nstates) .+ mean(tunedwindspeeds) #zeros(length(winddirections)) .+ 7.99 # winddata[:,2]
+    windspeeds = zeros(nstates) .+ mean(tunedwindspeeds) #tunedwindspeeds  #zeros(nstates) .+ mean(tunedwindspeeds) #zeros(length(winddirections)) .+ 7.99 # winddata[:,2]
     windprobabilities = winddata[:,3]
     
 
     air_density = 1.225  # kg/m^3 (from Jen)
-    ambient_ti = 0.05
+
+    tunedti = windandtidata[:,3]
+    ambient_ti = mean(tunedti) #0.05
     shearexponent = 0.084 #0.31
 
-    ambient_tis =  tunedti #zeros(nstates) .+ mean(tunedti) #zeros(nstates) .+ ambient_ti
+    ambient_tis =  zeros(nstates) .+ ambient_ti #tunedti
     measurementheight = zeros(nstates) .+ 90.0 #80.0
 
     # load power curve
