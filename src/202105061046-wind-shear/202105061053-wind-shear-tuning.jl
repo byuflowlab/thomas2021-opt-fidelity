@@ -65,7 +65,7 @@ function sowfa_shear(;case="high-ti")
 
     # calculate speeds at each height
     for i in 1:res
-        v_calc[i] = ff.adjust_for_wind_shear(h_calc[i], final_uref, final_zref, final_ground, shear_model)
+        v_calc[i] = ff.adjust_for_wind_shear(h_calc[i], 8.2, final_zref, final_ground, shear_model)
     end
 
     # put model results in data frame

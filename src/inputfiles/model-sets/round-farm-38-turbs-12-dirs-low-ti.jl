@@ -68,6 +68,7 @@ function wind_farm_setup(nturbines)
     ctdata = readdlm("../inputfiles/turbines/nrel-5mw/NREL5MWCPCT.txt", skipstart=1)
     velpoints = ctdata[:,1]
     ctpoints = ctdata[:,3]
+    # ctpoints[ctpoints .>= 1.0] .= 0.9
 
     # initialize thurst model
     ct_model = ff.ThrustModelCtPoints(velpoints, ctpoints)
@@ -101,7 +102,9 @@ function wind_farm_setup(nturbines)
     # wakedeficitmodel = ff.JensenTopHat()
     wakedeflectionmodel = ff.GaussYawVariableSpreadDeflection(alphastar, betastar, k1, k2)
     wakecombinationmodel = ff.LinearLocalVelocitySuperposition()
+    # wakecombinationmodel = ff.SumOfSquaresLocalVelocitySuperposition()
     localtimodel = ff.LocalTIModelMaxTI(alphastar, betastar, k1, k2)
+    # localtimodel = ff.LocalTIModelNoLocalTI()
 
     # initialize model set
     model_set = ff.WindFarmModelSet(wakedeficitmodel, wakedeflectionmodel, wakecombinationmodel, localtimodel)

@@ -1,7 +1,7 @@
 using FLOWFarm; const ff = FLOWFarm
 using DelimitedFiles
 using Statistics
-import PyPlot; const plt=PyPlot
+using PyPlot; const plt=PyPlot
 using DataFrames
 using LsqFit
 using Colors, ColorSchemes
@@ -306,7 +306,7 @@ function custum_color_map()
 end
 
 # function to compare directions 
-function sowfa_base_comparison(nsamplepoints=1; case="high-ti")
+function sowfa_base_comparison(nsamplepoints=1; case="low-ti")
 
     # load wind farm information 
     include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-$(case).jl")
@@ -322,7 +322,7 @@ function sowfa_base_comparison(nsamplepoints=1; case="high-ti")
     normbymax = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyfirst")
     normbyrated = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyrated")
     normindividually = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normalizedindividually")
-    turberror = normindividually
+    turberror = normbymax
     data = convert.(Int64, round.(turberror.*100, digits=0))
 
     # save data 
@@ -342,7 +342,32 @@ function sowfa_base_comparison(nsamplepoints=1; case="high-ti")
 
     im, cbar = heatmap(data, rowlabels, 1:nturbines, ax=ax,
             cbarlabel="Turbine Power Percent Error", cbar_kw=d)
-    
+
+    directionalpowers_ff = reshape(sum(turbine_powers_by_direction_ff,dims=2), 12)
+    directionalpowers_sowfa = reshape(sum(turbine_powers_by_direction_sowfa,dims=2), 12)
+    directionalerrors = (directionalpowers_sowfa .- directionalpowers_ff)./directionalpowers_sowfa
+    aep_ff = 365.0.*24.0.*sum(wind_resource.wind_probabilities.*directionalpowers_ff)
+    aep_sowfa = 365.0.*24.0.*sum(wind_resource.wind_probabilities.*directionalpowers_sowfa)
+    aep_error = (aep_sowfa - aep_ff)/aep_sowfa
+    println("AEP SOWFA (GWh): $(round(aep_sowfa*1E-9, digits=2))")
+    println("AEP FLOWFarm (GWh): $(round(aep_ff*1E-9, digits=2))")
+    println("AEP Error (%): $(round(aep_error.*100,digits=2))")
+
+
+    fig, ax = plt.subplots()
+    ax.bar(wind_resource.wind_directions.*180.0./pi .+ 5, directionalpowers_sowfa.*1E-6, label="SOWFA", width=10)
+    ax.bar(wind_resource.wind_directions.*180.0./pi .- 5, directionalpowers_ff.*1E-6, label="FLOWFarm", width=10)
+    ax.set(xticks=wind_resource.wind_directions.*180.0./pi, ylim=[0,70])
+    plt.xlabel("Direction (deg.)")
+    plt.ylabel("Directional Power (MW)")
+    plt.legend(frameon=false)
+
+    fig, ax = plt.subplots()
+    ax.bar(wind_resource.wind_directions.*180.0./pi, round.(100.0.*directionalerrors, digits=2), width=15)
+    ax.set(xticks=wind_resource.wind_directions.*180.0./pi)
+    plt.xlabel("Direction (deg.)")
+    plt.ylabel("Directional Error (%)");
+
 end
 
 function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true, labelpixels=true, fontsize=10, vcolor="w", edgecolor="w")
