@@ -1,8 +1,8 @@
 import PyPlot; const plt = PyPlot
 using DataFrames 
 using CSV
-using PyPlot
 using Colors, ColorSchemes
+using FLOWFarm; const ff = FLOWFarm
 
 function custum_color_map()
     colors = [colorant"#BDB8AD", colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"]
@@ -172,13 +172,71 @@ function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, ima
         plt.savefig(image_directory*image_name*case*".pdf", transparent=true)
     end
 end
+
+function layout(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="layout-", case="low-ti-opt")
+    
+    # load data
+    if case == "low-ti-opt"
+        datafile = "image-data/layouts/opt/optresultsmilestone.csv"
+    else
+        ErrorException("Case not available")
+    end
+
+    # extract data
+    df = DataFrame(CSV.File(datafile, datarow=2, header=false))
+
+    # name columns 
+    rename!(df,:Column1 => :x,:Column2 => :y)
+
+    # set up plot 
+    fig, ax = plt.subplots() 
+
+    diam = 126.4
+    les_radius = 2500.0
+    farm_radius = les_radius - 500 - diam/2
+
+    # plot using FLOWFarm
+    ff.plotlayout!(ax, df.x .+ les_radius, df.y .+ les_radius, zeros(length(df.x)).+diam)
+
+    # add boundary 
+    circle = matplotlib.patches.Circle((les_radius, les_radius), farm_radius, fill=nothing, color=colors[1])
+    ax.add_patch(circle)
+
+    # remove top and right spines 
+    # Hide the right and top spines
+    ax.spines["right"].set_visible(false)
+    ax.spines["top"].set_visible(false)
+    ax.spines["left"].set_visible(false)
+    ax.spines["bottom"].set_visible(false)
+    ax.axis("off")
+
+    # set limits 
+    ax.set_xlim([0.0, les_radius*2.0])
+    ax.set_ylim([0.0, les_radius*2.0])
+
+    # adjust aspeck to equal 
+    ax.set(aspect="equal")
+
+    # make sure everything fits 
+    plt.tight_layout()
+
+    
+    # save figure
+    if showfigs
+        show()
+    end
+    if savefigs
+        plt.savefig(image_directory*image_name*case*".pdf", transparent=true)
+    end
+end
+
 function generate_images_for_publication()
     fontsize = 18
     colors = ["#BDB8AD", "#85C0F9", "#0F2080", "#F5793A", "#A95AA1", "#382119"]
     savefigs = true 
     showfigs = true
 
-    wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti")
-    wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
-
+    # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti")
+    # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
+    layout(colors, fontsize)
 end

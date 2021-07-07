@@ -63,13 +63,19 @@ function get_data(;journal=false,case="high-ti")
     return turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019
 end
 
-function run_flow_farm(;use_local_ti=true, nsamplepoints=1, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, case="high-ti", ti=0, ws=0, wd=0)
+function run_flow_farm(;x=nothing, y=nothing, use_local_ti=true, nsamplepoints=1, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, case="high-ti", ti=0, ws=0, wd=0)
     # load FLOWFarm modelset
     filename = "../inputfiles/model-sets/round-farm-38-turbs-12-dirs-$(case).jl"
     include(filename)
-    nturbines = length(turbine_x)
-    turbine_xp = turbine_x[1:nturbines] .+ 2000.0
-    turbine_yp = turbine_y[1:nturbines] .+ 2000.0
+    
+    if x === nothing
+        turbine_xp = turbine_x .+ 2000.0
+        turbine_yp = turbine_y .+ 2000.0
+    else
+        turbine_xp = x 
+        turbine_yp = y
+    end
+
     if verbose
         println("turb x: $turbine_xp")
         println("turb y: $turbine_yp")
