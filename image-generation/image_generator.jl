@@ -3,6 +3,8 @@ using DataFrames
 using CSV
 using Colors, ColorSchemes
 using FLOWFarm; const ff = FLOWFarm
+using PrettyTables
+using DelimitedFiles
 
 function custum_color_map()
     colors = [colorant"#BDB8AD", colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"]
@@ -12,7 +14,7 @@ function custum_color_map()
     return plt.ColorMap("BlueGrayOrange", [colors[3],colors[1],colors[4]])
 end
 
-function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true, labelpixels=true, fontsize=10, vcolor="w", edgecolor="w")
+function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true, labelpixels=true, vcolor="w", edgecolor="w", boxmaxmin=true)
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -36,8 +38,31 @@ function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarl
         ax = plt.gca()
     end
 
+    # find max and min cells 
+    maxloc = findmax(data)[2]
+    minloc = findmin(data)[2]
+
+    # label the pixels
+    edgecolors = []
+    if boxmaxmin
+        for i = 1:length(row_labels)
+            for j = 1:length(col_labels)
+                if (i == maxloc[1] && j == maxloc[2])
+                    push!(edgecolors, "k")
+                elseif (i == minloc[1] && j == minloc[2])
+                    push!(edgecolors, "k")
+                else
+                    push!(edgecolors, edgecolor)
+                end
+            end
+        end
+    end
+
     # Plot the heatmap
-    im = ax.pcolormesh(data, edgecolor=edgecolor, cmap=cbar_kw[:cmap], vmin=minimum(cbar_kw[:ticks]), vmax=maximum(cbar_kw[:ticks]))
+    vmax=round(maximum(abs.(cbar_kw[:ticks])), digits=0)
+    vmin = -vmax
+    
+    im = ax.pcolormesh(data, edgecolor=edgecolors, cmap=cbar_kw[:cmap], vmin=vmin, vmax=vmax)
 
     # Create colorbar
     if use_cbar
@@ -77,18 +102,12 @@ function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarl
         for i = 1:length(row_labels)
             for j = 1:length(col_labels)
                 ax.text(j-0.5,i-0.5,data[i,j],
-                        ha="center",va="center",
-                        size=fontsize,color=vcolor)
+                        ha="center",va="center",color=vcolor)
             end
         end
     end
 
     return im, cbar
-end
-
-function turbine_error(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="turbine-error-", case="lowti", layout="opt")
-    image_name *= case*"-"*layout*".pdf"
-    
 end
 
 function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="windshear-", case="high-ti")
@@ -230,13 +249,331 @@ function layout(colors, fontsize; showfigs=false, savefigs=false, image_director
     end
 end
 
+function opt_comparison_table()
+
+    # flowfarm base data 
+    basepowerfileff = "image-data/power/turbine-power-low-ti-ff-100pts.txt"
+
+    # sowfa base data
+    basepowerfilesowfa = "image-data/power/turbine-power-low-ti-les.txt"
+
+    # flowfarm opt data 
+    optpowerfileff = "image-data/power/turbine-power-low-ti-ff-100pts-opt.txt"
+
+    # sowfa opt data 
+    optpowerfilesowfa = "image-data/power/turbine-power-low-ti-les-opt.txt"
+
+    # windrose data 
+    winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
+
+    # read files to dataframes
+    baseffdf = DataFrame(CSV.File(basepowerfileff, datarow=2, header=false))
+    optffdf = DataFrame(CSV.File(optpowerfileff, datarow=2, header=false))
+    basesowfadf = DataFrame(CSV.File(basepowerfilesowfa, datarow=2, header=false))
+    optsowfadf = DataFrame(CSV.File(optpowerfilesowfa, datarow=2, header=false))
+    winddf = DataFrame(CSV.File(winddatafile, datarow=2, header=false))
+
+    # name wind data columns 
+    rename!(winddf,:Column1 => :d,:Column2 => :s,:Column3 => :p)
+
+    # compute SOWFA directional improvement
+    basedirpowersowfa = sum.(eachcol(basesowfadf))
+    optdirpowersowfa = sum.(eachcol(optsowfadf))
+    improvementsowfa = 100.0.*(optdirpowersowfa .- basedirpowersowfa)./basedirpowersowfa
+
+    # compute FLOWFarm directional improvement
+    basedirpowerff = sum.(eachcol(baseffdf))
+    optdirpowerff = sum.(eachcol(optffdf))
+    improvementff = 100.0.*(optdirpowerff .- basedirpowerff)./basedirpowerff
+
+    # compute SOFWA AEP improvement 
+    aepbasesowfa = 365.0*24.0*sum(winddf.p .* basedirpowersowfa)
+    aepoptsowfa = 365.0*24.0*sum(winddf.p .* optdirpowersowfa)
+
+    println("SOWFA:")
+    println("AEP Base: $aepbasesowfa")
+    println("AEP Opt: $aepoptsowfa")
+    aepimpsowfa = 100.0.*(aepoptsowfa - aepbasesowfa)/aepbasesowfa
+    println("AEP imp: $(aepimpsowfa)")
+
+    # compute FLOWFarm AEP improvement
+    aepbaseff = 365.0*24.0*sum(winddf.p .* basedirpowerff)
+    aepoptff = 365.0*24.0*sum(winddf.p .* optdirpowerff)
+    
+    println("FLOWFarm:")
+    println("AEP Base: $aepbaseff")
+    println("AEP Opt: $aepoptff")
+    aepimpff = 100.0.*(aepoptff - aepbaseff)/aepbaseff
+    println("AEP imp: $(aepimpff)")
+
+    println("Comparison:")
+    aepdiffbase = 100.0.*(aepbasesowfa - aepbaseff)/aepbasesowfa
+    aepdiffopt = 100.0.*(aepoptsowfa - aepoptff)/aepoptsowfa
+    println("AEP dif base: $(aepdiffbase)")
+    println("AEP dif opt: $(aepdiffopt)")
+
+    # compute differences between SOWFA and FLOWFarm
+    errordf = DataFrame(BC=100.0.*(basedirpowersowfa .- basedirpowerff)./basedirpowersowfa,
+                        OC=100.0.*(optdirpowersowfa .- optdirpowerff)./optdirpowersowfa)
+
+    # scale and round data 
+    basedirpowersowfa = round.(basedirpowersowfa.*1e-6, digits=1)
+    basedirpowerff = round.(basedirpowerff.*1e-6, digits=1)
+    optdirpowersowfa = round.(optdirpowersowfa.*1e-6, digits=1)
+    optdirpowerff = round.(optdirpowerff.*1e-6, digits=1)
+
+    # add units
+    dirdata = []
+    for i = 1:length(winddf.d)
+        bs = basedirpowersowfa[i]
+        bf = basedirpowerff[i]
+        bc = round(errordf.BC[i],digits=1)
+        os = optdirpowersowfa[i]
+        of = optdirpowerff[i]
+        oc = round(errordf.OC[i], digits=1)
+        is = round(improvementsowfa[i], digits=1)
+        iff = round(improvementff[i], digits=1)
+        
+        println("\\multicolumn{1}{l}{\$$(Int(round(winddf.d[i], digits=0)))^{\\circ}\$} & &")
+        println("\\SI[per-mode=symbol]{$bs}{\\mega\\watt} &")
+        println("\\SI[per-mode=symbol]{$bf}{\\mega\\watt} &")
+        println("\\SI[per-mode=symbol]{$bc}{\\percent} & &")
+        println("\\SI[per-mode=symbol]{$os}{\\mega\\watt} &")
+        println("\\SI[per-mode=symbol]{$of}{\\mega\\watt} &")
+        println("\\SI[per-mode=symbol]{$oc}{\\percent} & &")
+        println("\\SI[per-mode=symbol]{$is}{\\percent} &")
+        println("\\SI[per-mode=symbol]{$iff}{\\percent} \\\\")
+        
+        # println(dirdata[i,:])
+    end
+
+    println("\\multicolumn{1}{l}{AEP} & &")
+    println("\\SI[per-mode=symbol]{$(round(aepbasesowfa*1e-9, digits=1))}{\\giga\\watt\\hour} &")
+    println("\\SI[per-mode=symbol]{$(round(aepbaseff*1e-9, digits=1))}{\\giga\\watt\\hour} &")
+    println("\\SI[per-mode=symbol]{$(round(aepdiffbase, digits=1))}{\\percent} & &")
+    println("\\SI[per-mode=symbol]{$(round(aepoptsowfa*1e-9, digits=1))}{\\giga\\watt\\hour} &")
+    println("\\SI[per-mode=symbol]{$(round(aepoptff*1e-9, digits=1))}{\\giga\\watt\\hour} &")
+    println("\\SI[per-mode=symbol]{$(round(aepdiffopt, digits=1))}{\\percent} & &")
+    println("\\SI[per-mode=symbol]{$(round(aepimpsowfa, digits=1))}{\\percent} &")
+    println("\\SI[per-mode=symbol]{$(round(aepimpff, digits=1))}{\\percent} \\\\")
+
+end
+
+function directional_comparison_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison")
+    # flowfarm base data 
+    basepowerfileff = "image-data/power/turbine-power-low-ti-ff-100pts.txt"
+
+    # sowfa base data
+    basepowerfilesowfa = "image-data/power/turbine-power-low-ti-les.txt"
+
+    # flowfarm opt data 
+    optpowerfileff = "image-data/power/turbine-power-low-ti-ff-100pts-opt.txt"
+
+    # sowfa opt data 
+    optpowerfilesowfa = "image-data/power/turbine-power-low-ti-les-opt.txt"
+
+    # windrose data 
+    winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
+
+    # read files to dataframes
+    baseffdf = DataFrame(CSV.File(basepowerfileff, datarow=2, header=false))
+    optffdf = DataFrame(CSV.File(optpowerfileff, datarow=2, header=false))
+    basesowfadf = DataFrame(CSV.File(basepowerfilesowfa, datarow=2, header=false))
+    optsowfadf = DataFrame(CSV.File(optpowerfilesowfa, datarow=2, header=false))
+    winddf = DataFrame(CSV.File(winddatafile, datarow=2, header=false))
+
+    # name wind data columns 
+    rename!(winddf,:Column1 => :d,:Column2 => :s,:Column3 => :p)
+
+    # compute directional data 
+    basedirpowerff = sum.(eachcol(baseffdf))
+    optdirpowerff = sum.(eachcol(optffdf))
+    basedirpowersowfa = sum.(eachcol(basesowfadf))
+    optdirpowersowfa = sum.(eachcol(optsowfadf))
+
+    # create directional power bar charts
+    fig, ax = plt.subplots(1, figsize=[6,4])
+
+    # ax.bar(winddf.d .- 5, optdirpowersowfa.*1E-6, label="SOWFA-Opt", width=10, color=colors[3])
+    ax.plot(winddf.d , optdirpowersowfa.*1e-6, color=colors[3], marker="o", linestyle="--")
+    ax.annotate("SOWFA-Optimized", (160, 65), color=colors[3])
+    # ax.bar(winddf.d .- 5, basedirpowersowfa.*1E-6, label="SOWFA-Base", width=10, color=colors[2])
+    ax.plot(winddf.d , basedirpowersowfa.*1e-6, color=colors[2], marker="o", linestyle="--")
+    ax.annotate("SOWFA-Base", (160, 55), color=colors[2])
+    # ax.bar(winddf.d .+ 5, optdirpowerff.*1E-6, label="BP-Opt", width=10, color=colors[4])
+    ax.plot(winddf.d , optdirpowerff.*1e-6, color=colors[4], marker="o", linestyle="--")
+    ax.annotate("BP-Optimized", (160, 59), color=colors[4])
+    # ax.bar(winddf.d .+ 5, basedirpowerff.*1E-6, label="BP-Base", width=10, color=colors[1])
+    ax.plot(winddf.d , basedirpowerff.*1e-6, color=colors[1], marker="o", linestyle="--")
+    ax.annotate("BP-Base", (160, 50), color=colors[1])
+
+    # format the figure
+    ax.set(xticks=winddf.d, ylim=[40, 70], xlabel="Direction (deg.)", ylabel="Directional Power (MW)")
+    ax.legend(frameon=false,ncol=2)
+
+    # remove upper and right bounding box
+    ax.spines["right"].set_visible(false)
+    ax.spines["top"].set_visible(false)
+
+    # make everything fit
+    plt.tight_layout()
+
+    # save figure
+    if showfigs
+        show()
+    end
+    if savefigs
+        plt.savefig(image_directory*image_name*".pdf", transparent=true)
+    end
+end
+
+function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="turbine-comparison", case="low-ti")
+    
+    function plot_turbine_heatmap(data, winddirections, vmin, vmax)
+
+        # number of turbines in the farm
+        nturbines = 38
+
+        # intialize figure
+        fig, ax = plt.subplots(figsize=(8,4))
+
+        # set tick locations and labels
+        ticks = vmin:4:vmax
+
+        println(vmax)
+        
+        # generate a custom color map 
+        cmap = custum_color_map()
+
+        # generate dict of colormap options
+        d = Dict(:shrink => 0.47, :ticks=>ticks, :aspect=>20, :orientation=>"horizontal", :cmap=>cmap, :pad=>0.05)
+        
+        # set row labels
+        rowlabels = convert.(Int64, round.((winddirections), digits=0))
+
+        # create heatmap
+        im, cbar = heatmap(data, rowlabels, 1:nturbines, ax=ax,
+                cbarlabel="Turbine Power Error as Percent of Max SOWFA Turbine Power", cbar_kw=d)
+
+        # remove upper and right bounding box
+        ax.spines["right"].set_visible(false)
+        ax.spines["top"].set_visible(false)
+
+        # make everything fit
+        plt.tight_layout()
+
+        return ax
+    end
+
+    function errors(first, second; method="absolute", ratedpower=5E6)
+        if method == "absolute"
+            return first .- second
+        elseif method == "normalizedindividually"
+            absolute_errors = errors(first, second, method="absolute")
+            normalized_errors = absolute_errors./first
+            return normalized_errors
+        elseif method == "normbyrated"
+            absolute_errors = errors(first, second, method="absolute")
+            normalized_errors = absolute_errors./ratedpower
+            return normalized_errors
+        elseif method == "normbyfirst"
+            absolute_errors = errors(first, second, method="absolute")
+            normalized_errors = absolute_errors./maximum(first)
+            return normalized_errors
+        elseif method == "normbyrow"
+            absolute_errors = errors(first, second, method="absolute")
+            normalized_errors = zeros(size(absolute_errors))
+            for i in 1:length(first[:,1])
+                normalized_errors[i,:] = absolute_errors[i,:]./maximum(absolute_errors[i,:])
+            end
+            return normalized_errors
+        elseif method == "normbyselfrow"
+            firstnormed = zeros(size(first))
+            secondnormed = zeros(size(second))
+            for i in 1:length(first[:,1])
+                firstnormed[i,:] = firstnormed[i,:]/maximum(firstnormed[i,:])
+                secondnormed[i,:] = secondnormed[i,:]/maximum(secondnormed[i,:])
+            end
+        
+            normalized_errors = errors(firstnormed, secondnormed, method="absolute")
+        
+            return normalized_errors
+        end
+    end
+
+    # flowfarm base data 
+    basepowerfileff = "image-data/power/turbine-power-low-ti-ff-100pts.txt"
+
+    # sowfa base data
+    basepowerfilesowfa = "image-data/power/turbine-power-low-ti-les.txt"
+
+    # flowfarm opt data 
+    optpowerfileff = "image-data/power/turbine-power-low-ti-ff-100pts-opt.txt"
+
+    # sowfa opt data 
+    optpowerfilesowfa = "image-data/power/turbine-power-low-ti-les-opt.txt"
+
+    # windrose data 
+    winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
+
+    # read files to dataframes
+    baseff = transpose(readdlm(basepowerfileff, ',', skipstart=1, header=false))
+        # DataFrame(CSV.File(basepowerfileff, datarow=2, header=false))
+    optff = transpose(readdlm(optpowerfileff, ',', skipstart=1, header=false))
+    basesowfa = transpose(readdlm(basepowerfilesowfa, skipstart=1, header=false))
+    # DataFrame(CSV.File(basepowerfilesowfa, datarow=2, header=false))
+    optsowfa = transpose(readdlm(optpowerfilesowfa, skipstart=1, header=false))
+    winddf = DataFrame(CSV.File(winddatafile, datarow=2, header=false))
+
+    # name wind data columns 
+    rename!(winddf,:Column1 => :d,:Column2 => :s,:Column3 => :p)
+
+    # set vmin and vmax 
+    vmax = 22
+    vmin = -vmax
+
+    # calculate turbine errors for base case
+    turberror = errors(basesowfa, baseff, method="normbyfirst")
+    data = convert.(Int64, round.(turberror.*100, digits=0))
+
+    # plot error on heatmap
+    plot_turbine_heatmap(data, winddf.d, vmin, vmax)
+
+    if savefigs
+        plt.savefig(image_directory*image_name*"-"*case*".pdf", transparent=true)
+    end
+
+    # calculate turbine errors for opt case
+    turberror = errors(optsowfa, optff, method="normbyfirst")
+    data = convert.(Int64, round.(turberror.*100, digits=0))
+
+    # plot error on heatmap
+    plot_turbine_heatmap(data, winddf.d, vmin, vmax)
+
+    if savefigs
+        plt.savefig(image_directory*image_name*"-"*case*"-opt.pdf", transparent=true)
+    end
+
+    # save figure
+    if showfigs
+        plt.show()
+    end
+
+end
+
 function generate_images_for_publication()
-    fontsize = 18
+    # PyPlot.matplotlib.rcParams
+    rcParams = PyPlot.matplotlib.rcParams
+    rcParams["font.size"] = 8
+    fontsize = 8
     colors = ["#BDB8AD", "#85C0F9", "#0F2080", "#F5793A", "#A95AA1", "#382119"]
     savefigs = true 
     showfigs = true
 
     # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti")
     # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
-    layout(colors, fontsize)
+    # layout(colors, fontsize)
+    # opt_comparison_table()
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
+    turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
 end
