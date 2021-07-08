@@ -644,6 +644,239 @@ function horns_rev_direction_verification_figure(colors, fontsize; showfigs=fals
     end
 end
 
+
+function plot_circle(cx,cy,R,color,ax;fill=false,alpha=1.0,linestyle="-",linewidth=1,label="nolabel")
+    N = 1000
+    x = zeros(N)
+    y = zeros(N)
+    theta = range(0.0,stop=2*pi,length=N)
+    for i=1:N
+        x[i] = cx + cos(theta[i])*R
+        y[i] = cy + sin(theta[i])*R
+    end
+
+    if fill==true
+        if label=="nolabel"
+            ax.fill(x,y,color=color,alpha=alpha, edgecolor="None")
+        else
+            ax.fill(x,y,color=color,alpha=alpha, edgecolor="None",label=label)
+        end
+    else
+        if label=="nolabel"
+            ax.plot(x,y,color=color,alpha=alpha,linestyle=linestyle,linewidth=linewidth)
+        else
+            ax.plot(x,y,color=color,alpha=alpha,linestyle=linestyle,linewidth=linewidth,label=label)
+        end
+    end
+end
+
+function rotor_sample_points(x1,y1,x2,y2;color="C0",fontsize=10,filename="nosave")
+
+    plt.figure(figsize=(6,3))
+    ax1 = plt.subplot(121)
+    ax2 = plt.subplot(122)
+
+    ax1.spines["right"].set_visible(false)
+    ax1.spines["top"].set_visible(false)
+    ax2.spines["right"].set_visible(false)
+    ax2.spines["top"].set_visible(false)
+
+    # ax1.plot(x1,y1,"o",)
+    div = 130.0
+    bladeX = [3.,7.,10.,15.,20.,25.,30.,35.,30.,25.,20.,15.,10.,5.,3.,3.]
+    bladeY = [0.,0.,0.8,1.5,1.7,1.9,2.1,2.3,2.4,2.4,2.4,2.4,2.4,2.4,2.4,0.].-1.5
+    #
+    T = 110/div
+    H = 0/div
+    D = 130/div
+    R = 65/div
+    d = [6.3,5.5,4.]./div
+
+    c1 = R/35
+
+    px1 = [0.0-d[1]/2,0.0-d[2]/2,0.0-d[3]/2,0.0+d[3]/2,0.0+d[2]/2,0.0+d[1]/2,0.0-d[1]/2]
+    py1 = [-T,-T/2,-3.0*c1,-3.0*c1,-T/2,-T,-T]
+    #
+    #add blades
+
+    #
+    angle1 = 5.
+
+    blade1X = bladeX*cos(deg2rad(angle1))-bladeY*sin(deg2rad(angle1))
+    blade1Y = bladeX*sin(deg2rad(angle1))+bladeY*cos(deg2rad(angle1))
+
+    blade2X = bladeX*cos(deg2rad(angle1+120.))-bladeY*sin(deg2rad(angle1+120.))
+    blade2Y = bladeX*sin(deg2rad(angle1+120.))+bladeY*cos(deg2rad(angle1+120.))
+
+    blade3X = bladeX*cos(deg2rad(angle1+240.))-bladeY*sin(deg2rad(angle1+240.))
+    blade3Y = bladeX*sin(deg2rad(angle1+240.))+bladeY*cos(deg2rad(angle1+240.))
+    #
+    plot_circle(0,H,R,color,ax1,alpha=0.5)
+    ax1.plot(px1,py1,color=color, linewidth=1.2*1.5,alpha=0.5)
+    plot_circle(0,H,3*c1,color,ax1,alpha=0.5)
+    ax1.plot(blade1X.*c1.+0.0, blade1Y.*c1.+H, linewidth=1*1.5, color=color,alpha=0.5)
+    ax1.plot(blade2X.*c1.+0.0, blade2Y.*c1.+H, linewidth=1*1.5, color=color,alpha=0.5)
+    ax1.plot(blade3X.*c1.+0.0, blade3Y.*c1.+H, linewidth=1*1.5, color=color,alpha=0.5)
+    ax1.axis("equal")
+
+    angle2 = -20.
+
+    blade1X = bladeX*cos(deg2rad(angle2))-bladeY*sin(deg2rad(angle2))
+    blade1Y = bladeX*sin(deg2rad(angle2))+bladeY*cos(deg2rad(angle2))
+
+    blade2X = bladeX*cos(deg2rad(angle2+120.))-bladeY*sin(deg2rad(angle2+120.))
+    blade2Y = bladeX*sin(deg2rad(angle2+120.))+bladeY*cos(deg2rad(angle2+120.))
+
+    blade3X = bladeX*cos(deg2rad(angle2+240.))-bladeY*sin(deg2rad(angle2+240.))
+    blade3Y = bladeX*sin(deg2rad(angle2+240.))+bladeY*cos(deg2rad(angle2+240.))
+    #
+    plot_circle(0,H,R,color,ax2,alpha=0.5)
+    ax2.plot(px1,py1,color=color, linewidth=1.2*1.5,alpha=0.5)
+    plot_circle(0,H,3*c1,color,ax2,alpha=0.5)
+    ax2.plot(blade1X.*c1.+0.0, blade1Y.*c1.+H, linewidth=1*1.5, color=color,alpha=0.5)
+    ax2.plot(blade2X.*c1.+0.0, blade2Y.*c1.+H, linewidth=1*1.5, color=color,alpha=0.5)
+    ax2.plot(blade3X.*c1.+0.0, blade3Y.*c1.+H, linewidth=1*1.5, color=color,alpha=0.5)
+    ax2.axis("equal")
+
+
+    ax1.plot(x1,y1,"o",color=color,markersize=4,label="sampling points")
+    ax2.plot(x2,y2,"o",color=color,markersize=4)
+    ax1.legend(fontsize=fontsize)
+
+    # ax1.set_xlabel(r"Horizontal Distance From Hub, $\Delta y/d$",fontsize=fontsize)
+    ax1.set_xlabel("Horizontal Distance From Hub, "*L"\Delta y/d",fontsize=fontsize)
+    ax1.set_ylabel("Vertical Distance From Hub, "*L"\Delta z/d",fontsize=fontsize)
+    ax2.set_xlabel("Horizontal Distance From Hub, "*L"\Delta y/d",fontsize=fontsize)
+    ax2.set_ylabel("Vertical Distance From Hub, "*L"\Delta z/d",fontsize=fontsize)
+
+    ax1.text(0,-1.3,"(a)",horizontalalignment="center",fontsize=fontsize)
+    ax2.text(0,-1.3,"(b)",horizontalalignment="center",fontsize=fontsize)
+
+    plt.subplots_adjust(top=0.99,bottom=0.22,right=0.92,left=0.12,wspace=0.8)
+
+    if filename != "nosave"
+        plt.savefig(filename,transparent=true)
+    end
+end
+
+function sunflower_points(n, alpha=1.0)
+    # this function generates n points within a circle in a sunflower seed pattern
+    # the code is based on the example found at
+    # https://stackoverflow.com/questions/28567166/uniformly-distribute-x-points-inside-a-circle
+
+    function radius(k, n, b)
+        if (k + 1) > n - b
+            r = 1.0 # put on the boundary
+        else
+            r = sqrt((k + 1.0) - 1.0 / 2.0) / sqrt(n - (b + 1.0) / 2.0)  # apply squareroot
+        end
+        return r
+    end
+
+
+    x = zeros(n)
+    y = zeros(n)
+
+    b = round(alpha * sqrt(n)) # number of boundary points
+
+    phi = (sqrt(5.0) + 1.0) / 2.0  # golden ratio
+
+    for k = 1:n
+        r = radius(k, n, b)
+
+        theta = 2.0 * pi * (k+1) / phi^2
+
+        x[k] = r * cos(theta)
+        y[k] = r * sin(theta)
+    end
+
+    return x, y
+end
+
+function turbine_layouts_initial(xlocs,ylocs;rotor_diameter=126.4,boundary_radius=2000,les_side=5000,
+                                    c1="C0",c2="C1",color="C0",fontsize=10,filename="nosave")
+    plt.figure(figsize=(5,3))
+    ax = plt.gca()
+    ax.spines["right"].set_visible(false)
+    ax.spines["top"].set_visible(false)
+    R = rotor_diameter/2
+    cx = 2500
+    cy = 2500
+    lw = 0.75
+    plot_circle(cx,cy,boundary_radius,c1,ax,linestyle="--",linewidth=lw,label="Farm boundary")
+
+    les_x = [0,les_side,les_side,0,0]
+    les_y = [0,0,les_side,les_side,0]
+    ax.plot(les_x,les_y,"--",color=c2,linewidth=lw,label="LES Domain")
+    
+
+    nturbs = length(xlocs)
+    for i=1:nturbs
+        plot_circle(xlocs[i],ylocs[i],R,"black",ax,linewidth=1,fill=false)
+        ax.text(xlocs[i]+rotor_diameter/5,ylocs[i]+rotor_diameter/5,"$i",fontsize=fontsize-2,horizontalalignment="left",verticalalignment="bottom")
+    end
+
+    ax.legend(fontsize=fontsize,bbox_to_anchor=[1.0, 1.0])
+    ax.axis("square")
+    # ax.set_xlim(-100,les_side+1000)
+
+    ax.set_xlabel("Turbine X Position, m",fontsize=fontsize)
+    ax.set_ylabel("Turbine Y Position, m",fontsize=fontsize)
+    
+    plt.subplots_adjust(left=0.15,bottom=0.12,top=0.99,right=0.6)
+    
+    if filename != "nosave"
+        plt.savefig(filename,transparent=true)
+    end
+end
+
+function windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
+    
+    f1 = f1./sum(f1)
+    f2 = f2./sum(f2)
+    if maximum(d1) > 100
+        d1 = deg2rad.(d1)
+    end
+    if maximum(d2) > 100
+        d2 = deg2rad.(d2)
+    end
+    println(wd1)
+    plt.figure(figsize=(6,3))
+    ax1 = plt.subplot(121,projection="polar")
+    ax2 = plt.subplot(122,projection="polar")
+
+    ndirs1 = length(d1)
+    width1 = 2*pi/ndirs1
+    ax1.bar(pi/2 .-d1,f1,width=width1,color=color,alpha=alpha,edgecolor="black")
+    ax1.set_xticks((0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4))
+    ax1.set_xticklabels(("E","NE","N","NW","W","SW","S","SW"),fontsize=fontsize)
+    ax1.set_rgrids((0.04,0.08,0.12),("4%","8%","12%"),angle=-20,fontsize=fontsize)
+    for tick in ax1.yaxis.get_majorticklabels()
+        tick.set_horizontalalignment("center")
+    end
+
+
+    ndirs2 = length(d2)
+    width2 = 2*pi/ndirs2
+    ax2.bar(pi/2 .-d2,f2,width=width2,color=color,alpha=alpha,edgecolor="black")
+    ax2.set_xticks((0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4))
+    ax2.set_xticklabels(("E","NE","N","NW","W","SW","S","SW"),fontsize=fontsize)
+    ax2.set_rgrids((0.02,0.035,0.05),("2%","3.5%","5%"),angle=-20,fontsize=fontsize)
+    for tick in ax2.yaxis.get_majorticklabels()
+        tick.set_horizontalalignment("center")
+    end
+
+    ax1.set_title("(a)", y=-0.25,fontsize=fontsize)
+    ax2.set_title("(b)", y=-0.25,fontsize=fontsize)
+
+    plt.subplots_adjust(left=0.05,right=0.95,top=0.9,bottom=0.2)
+
+    if filename != "nosave"
+        plt.savefig(filename,transparent=true)
+    end
+
+end
+
 function generate_images_for_publication()
 
     fontsize = 8
