@@ -5,6 +5,7 @@ using Colors, ColorSchemes
 using FLOWFarm; const ff = FLOWFarm
 using PrettyTables
 using DelimitedFiles
+using LaTeXStrings
 
 function custum_color_map()
     colors = [colorant"#BDB8AD", colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"]
@@ -793,40 +794,78 @@ function sunflower_points(n, alpha=1.0)
     return x, y
 end
 
-function turbine_layouts_initial(xlocs,ylocs;rotor_diameter=126.4,boundary_radius=2000,les_side=5000,
-                                    c1="C0",c2="C1",color="C0",fontsize=10,filename="nosave")
+function turbine_layouts(colors ;rotor_diameter=126.4,les_side=5000,
+                                    c1="C0",c2="C1",color="C0",fontsize=10,
+                                    case="low-ti-opt", showfigs=false, savefigs=false)
+
+    les_radius = les_side/2.0
+    boundary_radius = les_radius - 500.0 - rotor_diameter/2.0
+
+    # load data
+    if case == "low-ti-opt"
+        datafile = "image-data/layouts/opt/optresultsmilestone.csv"
+        data = readdlm(datafile, ',', skipstart=1).+les_radius
+    elseif case == "low-ti"
+        datafile = "../src/inputfiles/farms/layout_38turb_round.txt"
+        data = readdlm(datafile, skipstart=1).*rotor_diameter .+ (les_radius - boundary_radius)
+    else
+        ErrorException("Case not available")
+    end
+
+    xlocs = data[:,1]
+    ylocs = data[:,2]
+
     plt.figure(figsize=(5,3))
     ax = plt.gca()
-    ax.spines["right"].set_visible(false)
+
+    ax.axes.xaxis.set_visible(false)
+    ax.axes.yaxis.set_visible(false)
+
     ax.spines["top"].set_visible(false)
+    ax.spines["bottom"].set_visible(false)
+    ax.spines["left"].set_visible(false)
+    ax.spines["right"].set_visible(false)
+
+    # xaxis.set_visible(False)
+
     R = rotor_diameter/2
     cx = 2500
     cy = 2500
     lw = 0.75
-    plot_circle(cx,cy,boundary_radius,c1,ax,linestyle="--",linewidth=lw,label="Farm boundary")
+    plot_circle(cx,cy,boundary_radius,colors[2],ax,linestyle="--",linewidth=lw,label="Farm boundary")
+    ax.annotate("Farm Boundary", (les_radius, les_radius-boundary_radius-rotor_diameter*2.5), color=colors[2])
 
     les_x = [0,les_side,les_side,0,0]
     les_y = [0,0,les_side,les_side,0]
-    ax.plot(les_x,les_y,"--",color=c2,linewidth=lw,label="LES Domain")
+    ax.plot(les_x,les_y,"-",color=colors[4],linewidth=lw,label="LES Domain")
+    ax.annotate("LES Domain", (0, les_side+rotor_diameter/2.0), color=colors[4])
     
-
     nturbs = length(xlocs)
     for i=1:nturbs
-        plot_circle(xlocs[i],ylocs[i],R,"black",ax,linewidth=1,fill=false)
-        ax.text(xlocs[i]+rotor_diameter/5,ylocs[i]+rotor_diameter/5,"$i",fontsize=fontsize-2,horizontalalignment="left",verticalalignment="bottom")
+        plot_circle(xlocs[i],ylocs[i],R,colors[3],ax,linewidth=1,fill=false)
+        ax.text(xlocs[i]+rotor_diameter/5,ylocs[i]+rotor_diameter/5,"$i",
+                fontsize=fontsize-2,horizontalalignment="left",verticalalignment="bottom",
+                color=colors[1])
     end
 
-    ax.legend(fontsize=fontsize,bbox_to_anchor=[1.0, 1.0])
+    # ax.legend(fontsize=fontsize,bbox_to_anchor=[1.0, 1.0])
     ax.axis("square")
     # ax.set_xlim(-100,les_side+1000)
 
-    ax.set_xlabel("Turbine X Position, m",fontsize=fontsize)
-    ax.set_ylabel("Turbine Y Position, m",fontsize=fontsize)
+    # ax.set_xlabel("Turbine X Position, m",fontsize=fontsize)
+    # ax.set_ylabel("Turbine Y Position, m",fontsize=fontsize)
     
     plt.subplots_adjust(left=0.15,bottom=0.12,top=0.99,right=0.6)
-    
-    if filename != "nosave"
-        plt.savefig(filename,transparent=true)
+
+    plt.tight_layout()
+
+    if savefigs
+        plt.savefig("images/"*case*"-layout.pdf", transparent=true)
+    end
+
+    # save figure
+    if showfigs
+        plt.show()
     end
 end
 
@@ -896,8 +935,11 @@ function generate_images_for_publication()
     # opt_comparison_table()
     # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
-    horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=1, savefigs=savefigs, showfigs=showfigs)
-    horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=100, savefigs=savefigs, showfigs=showfigs)
-    horns_rev_direction_verification_figure(colors, fontsize, nsamplepoints=1, savefigs=savefigs, showfigs=showfigs)
-    horns_rev_direction_verification_figure(colors, fontsize, nsamplepoints=100, savefigs=savefigs, showfigs=showfigs)
+    # horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=1, savefigs=savefigs, showfigs=showfigs)
+    # horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=100, savefigs=savefigs, showfigs=showfigs)
+    # horns_rev_direction_verification_figure(colors, fontsize, nsamplepoints=1, savefigs=savefigs, showfigs=showfigs)
+    # horns_rev_direction_verification_figure(colors, fontsize, nsamplepoints=100, savefigs=savefigs, showfigs=showfigs)
+
+    turbine_layouts(colors, case="low-ti-opt", showfigs=showfigs, savefigs=savefigs)
+    turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
 end
