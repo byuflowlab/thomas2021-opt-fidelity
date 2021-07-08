@@ -561,12 +561,99 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
 
 end
 
+function horns_rev_rows_verification_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="horns-rev-rows", nsamplepoints=100)
+
+    # load FLOWFarm and Niayifar data
+    datafile = "image-data/verification/horns-rev-rows-$nsamplepoints-sample-points.txt"
+    data = readdlm(datafile, skipstart=1)
+    rows = data[:, 1]
+    normalized_power_les_niayifar = data[:,2]
+    normalized_power_model_niayifar = data[:, 3]
+    normalized_power_averaged_ff_no_ti = data[:,4]
+    normalized_power_averaged_ff_ti = data[:, 5]
+
+    fig, ax = plt.subplots(figsize=(5,3))
+
+    ax.scatter(rows, normalized_power_les_niayifar, c=colors[1], label="Niayifar 2016 LES", marker="o")
+    ax.scatter(rows, normalized_power_model_niayifar, c=colors[4], label="Niayifar 2016 Model", marker="*")
+    ax.scatter(rows, normalized_power_averaged_ff_no_ti, edgecolors=colors[2], label="BP w/o Local TI", marker="^", facecolors="none")
+    ax.scatter(rows, normalized_power_averaged_ff_ti, edgecolors=colors[3], label="BP w/Local TI", marker="v", facecolors="none")
+    
+    # format the figure
+    ax.set(xlabel="Row", ylabel="Normalized Power", ylim=[0,1.1], xticks=Int.(rows))
+    ax.legend(frameon=false,ncol=1)
+
+    # remove upper and right bounding box
+    ax.spines["right"].set_visible(false)
+    ax.spines["top"].set_visible(false)
+
+    plt.tight_layout()
+
+    if savefigs
+        plt.savefig(image_directory*image_name*"-$nsamplepoints-sample-points.pdf", transparent=true)
+    end
+
+    # save figure
+    if showfigs
+        plt.show()
+    end
+end
+
+function horns_rev_direction_verification_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="horns-rev-directions", nsamplepoints=100)
+
+    # load FLOWFarm and Niayifar data
+    lesfile = "../src/inputfiles/results-niayifar-2016/horns-rev-normalized-power-by-direction-les.txt"
+    modelfile = "image-data/verification/horns-rev-direction-$nsamplepoints-sample-points.txt"
+
+    lesdata = readdlm(lesfile, ',', skipstart=1)
+    modeldata = readdlm(modelfile, skipstart=1)
+    
+    lesdirections = lesdata[:, 1]
+    normalized_power_les_niayifar = lesdata[:,2]
+
+    modeldirections = modeldata[:, 1]
+    normalized_power_model_niayifar = modeldata[:, 2]
+    normalized_power_averaged_ff_no_ti = modeldata[:,3]
+    normalized_power_averaged_ff_ti = modeldata[:, 4]
+
+    fig, ax = plt.subplots(figsize=(5,3))
+    println(lesdirections)
+    println(modeldirections)
+    ax.plot(lesdirections, normalized_power_les_niayifar, c=colors[1], label="Niayifar 2016 LES", marker="o", linestyle="none", markersize=4)
+    ax.plot(modeldirections, normalized_power_model_niayifar, "-", c=colors[4], label="Niayifar 2016 Model")
+    ax.plot(modeldirections, normalized_power_averaged_ff_no_ti, "--", c=colors[2], label="BP w/o Local TI")
+    ax.plot(modeldirections, normalized_power_averaged_ff_ti, ":", c=colors[3], label="BP w/Local TI")
+    
+    # format the figure
+    ax.set(xlabel="Direction (deg.)", ylabel="Normalized Power", ylim=[0,1])
+    ax.legend(frameon=false,ncol=2)
+
+    # remove upper and right bounding box
+    ax.spines["right"].set_visible(false)
+    ax.spines["top"].set_visible(false)
+
+    plt.tight_layout()
+
+    if savefigs
+        plt.savefig(image_directory*image_name*"-$nsamplepoints-sample-points.pdf", transparent=true)
+    end
+
+    # save figure
+    if showfigs
+        plt.show()
+    end
+end
+
 function generate_images_for_publication()
-    # PyPlot.matplotlib.rcParams
-    rcParams = PyPlot.matplotlib.rcParams
-    rcParams["font.size"] = 8
+
     fontsize = 8
     colors = ["#BDB8AD", "#85C0F9", "#0F2080", "#F5793A", "#A95AA1", "#382119"]
+
+    rcParams = PyPlot.matplotlib.rcParams
+    rcParams["font.size"] = fontsize
+    rcParams["lines.markersize"] = 8
+    rcParams["axes.prop_cycle"] = colors
+
     savefigs = true 
     showfigs = true
 
@@ -575,5 +662,9 @@ function generate_images_for_publication()
     # layout(colors, fontsize)
     # opt_comparison_table()
     # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
-    turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
+    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
+    horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=1, savefigs=savefigs, showfigs=showfigs)
+    horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=100, savefigs=savefigs, showfigs=showfigs)
+    horns_rev_direction_verification_figure(colors, fontsize, nsamplepoints=1, savefigs=savefigs, showfigs=showfigs)
+    horns_rev_direction_verification_figure(colors, fontsize, nsamplepoints=100, savefigs=savefigs, showfigs=showfigs)
 end
