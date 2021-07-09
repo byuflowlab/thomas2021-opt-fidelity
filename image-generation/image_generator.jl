@@ -6,13 +6,14 @@ using FLOWFarm; const ff = FLOWFarm
 using PrettyTables
 using DelimitedFiles
 using LaTeXStrings
+import VectorizedRoutines; const ml = VectorizedRoutines.Matlab
 
-function custum_color_map()
+function custum_color_map(;idx=[3, 1, 4])
     colors = [colorant"#BDB8AD", colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"]
     # @pyimport matplotlib.colors as matcolors
     # cmap = matcolors.ListedColormap([(1,0,0),(0,1,0),(0,0,1)],"A")
 
-    return plt.ColorMap("BlueGrayOrange", [colors[3],colors[1],colors[4]])
+    return plt.ColorMap("BlueGrayOrange", colors[idx])
 end
 
 function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true, labelpixels=true, vcolor="w", edgecolor="w", boxmaxmin=true)
@@ -916,6 +917,56 @@ function windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
 
 end
 
+function vertical_slice(colors; savefigs=false, showfigs=false)
+
+    # set input values 
+    diam = 0.15
+
+    # load flowfield velocities
+    ffvelocities = readdlm("image-data/verification/vertical-slice-interpolated.txt")
+
+    # load plot ranges
+    ranges = readdlm("image-data/verification/vertical-slice-ranges.txt")
+    xres = ranges[1, 2]
+    zres = ranges[1, 3]
+    xmax = ranges[2, 2]
+    zmax = ranges[2, 3]
+    xmin = ranges[3, 2]
+    zmin = ranges[3, 3]
+
+    # set up point grid for flow field
+    xrange = xmin:(xmax-xmin)/xres:xmax
+    zrange = zmin:(zmax-zmin)/zres:zmax
+
+    # create meshgrid 
+    xg, zg = ml.meshgrid(collect(xrange), collect(zrange))
+
+    # set contour levels
+    levels = 0.1:0.1:2.6
+
+    # get colormap 
+    cmap = custum_color_map(idx=[3,2])
+    
+    # generate contour plot
+    fig, ax = plt.subplots(figsize=(7,3))
+    ax.contourf(xg./diam, zg./diam, ffvelocities, levels, cmap=cmap)
+
+    # format figure 
+    ax.set(xticks=0:4:20, yticks=0:2)
+    ax.set(xlabel=L"$x/d_0$", ylabel=L"$z/d_0$")
+
+    plt.tight_layout()
+
+    if savefigs
+        plt.savefig("images/vertical-slice-interpolated.pdf", transparent=true)
+    end
+
+    # save figure
+    if showfigs
+        plt.show()
+    end
+end
+
 function generate_images_for_publication()
 
     fontsize = 8
@@ -940,6 +991,8 @@ function generate_images_for_publication()
     # horns_rev_direction_verification_figure(colors, fontsize, nsamplepoints=1, savefigs=savefigs, showfigs=showfigs)
     # horns_rev_direction_verification_figure(colors, fontsize, nsamplepoints=100, savefigs=savefigs, showfigs=showfigs)
 
-    turbine_layouts(colors, case="low-ti-opt", showfigs=showfigs, savefigs=savefigs)
-    turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
+    # turbine_layouts(colors, case="low-ti-opt", showfigs=showfigs, savefigs=savefigs)
+    # turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
+
+    vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
 end
