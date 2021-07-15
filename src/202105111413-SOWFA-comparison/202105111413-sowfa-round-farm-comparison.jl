@@ -44,7 +44,7 @@ function get_data(;journal=false,case="high-ti")
         turbine_powers_by_direction_sowfa = format_sowfa_data(sowfa_les_data, 12, 38)
     else
         turbine_powers_by_direction_sowfa = zeros((12,38))
-        turbine_powers_by_direction_sowfa[:,:] = transpose(readdlm(lesfile, skipstart=1))*1E3
+        turbine_powers_by_direction_sowfa[:,:] = transpose(readdlm(lesfile, skipstart=1))
     end
     # println(size(turbine_powers_by_direction_sowfa))
     # load plantenergy data
@@ -124,7 +124,7 @@ function run_flow_farm(;x=nothing, y=nothing, use_local_ti=true, nsamplepoints=1
         windpeed = [8.0]
         winddirection = [270.0*pi/180]
         windprobability = [1.0]
-        windheight = [80.0]
+        windheight = [90.0]
         windtis = [ambient_ti]
 
         # initialize the wind resource definition
@@ -132,6 +132,7 @@ function run_flow_farm(;x=nothing, y=nothing, use_local_ti=true, nsamplepoints=1
 
     end
     # run FLOWFarm with local ti
+    println("x: $(turbine_xp) \ny: $(turbine_yp)")
     turbine_powers_by_direction_ff = ff.calculate_state_turbine_powers(turbine_xp, turbine_yp, turbine_z, rotor_diameter,
         hub_height, turbine_yaw, ct_models, generator_efficiency, cut_in_speed,
         cut_out_speed, rated_speed, rated_power, wind_resource_local, power_models, model_set_internal,
@@ -185,15 +186,17 @@ function obj_func_internals(points, windspeed, ti, case, wd)
     
     # return just the powers of interest
     powers_to_return = turbine_powers_flowfarm[points]
+    # println(powers_to_return)
     return powers_to_return
 end
 
 function obj_func_windspeed(points, parameters; ti=0.05589339140297106, case="low-ti", wd=0)
+    # println("obj func windspeed $parameters")
     return obj_func_internals(points, parameters[1], ti, case, wd)
 end
 
 function obj_func_ti(points, parameters; windspeed=8.466323515677749, case="low-ti", wd=0)
-    return obj_func_internals(points, windspeed, parameters[1]si, case, wd)
+    return obj_func_internals(points, windspeed, parameters[1], case, wd)
 end
 
 function tune_flow_farm()
@@ -321,7 +324,8 @@ function sowfa_base_comparison(nsamplepoints=1; case="low-ti")
     turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019 = get_data(case=case)
 
     # run FLOWFarm
-    turbine_powers_by_direction_ff = run_flow_farm(nsamplepoints=nsamplepoints; case=case)
+    turbine_powers_by_direction_ff = run_flow_farm(x=turbine_x, y=turbine_y, use_local_ti=true, 
+        nsamplepoints=nsamplepoints, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, case=case, ti=0.0456610699321765, ws=8.0550061514824, wd=0)
 
     # calulate various errors types 
     absoluteerror = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="absolute")

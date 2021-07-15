@@ -3,6 +3,7 @@ import FLOWFarm; const ff = FLOWFarm
 turbine_x = [0.0]
 turbine_y = [0.0]
 turbine_z = [0.0]
+turbine_yaw = [0.0]
 diam = 126.4
 nturbines = 1
 
@@ -14,6 +15,8 @@ cut_out_speed = zeros(nturbines) .+25.  # m/s
 rated_speed = zeros(nturbines) .+11.4  # m/s
 rated_power = zeros(nturbines) .+5.0E6  # W
 generator_efficiency = zeros(nturbines) .+ 0.944
+
+rotor_sample_points_y, rotor_sample_points_z = ff.rotor_sample_points(100)
 
 # load power curve
 cpctdata = readdlm("../inputfiles/turbines/nrel-5mw/NREL5MWCPCT.txt",  ' ', skipstart=1)
@@ -39,20 +42,21 @@ end
 
 sorted_turbine_index = [1]
 
-wind_speed = 8.1
-air_density = 1.1716  # kg/m^3
+wind_speed = 8.2
+air_density = 1.225  # kg/m^3
 winddirections = [270.0*pi/180.0]
 windspeeds = [wind_speed]
 windprobabilities = [1.0]
 measurementheights = [hub_height[1]]
 wtvelocities = [wind_speed]
-ambient_tis = [0.1]
-shearexponent = 0.0
-wind_shear_model = ff.PowerLawWindShear(shearexponent)
-windresource = ff.DiscretizedWindResource(winddirections, windspeeds, windprobabilities, measurementheights, air_density, ambient_tis, wind_shear_model)
+ambient_tis = [0.045]
+shearexponent = 0.084
+wind_shear_model = ff.PowerLawWindShear(shearexponent, 0.0)
+wind_resource = ff.DiscretizedWindResource(winddirections, windspeeds, windprobabilities, measurementheights, air_density, ambient_tis, wind_shear_model)
 
 # set up wake and related models
-wakedeficitmodel = ff.GaussYawVariableSpread()
+# wakedeficitmodel = ff.GaussYawVariableSpread()
+wakedeficitmodel = ff.GaussYaw()
 wakedeflectionmodel = ff.GaussYawVariableSpreadDeflection()
 wakecombinationmodel = ff.LinearLocalVelocitySuperposition()
 localtimodel = ff.LocalTIModelNoLocalTI()

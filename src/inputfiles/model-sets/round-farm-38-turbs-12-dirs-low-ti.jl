@@ -24,7 +24,7 @@ function wind_farm_setup(nturbines)
     cut_out_speed = zeros(nturbines) .+25.  # m/s
     rated_speed = zeros(nturbines) .+11.4  # m/s
     rated_power = zeros(nturbines) .+5.0E6  # W
-    generator_efficiency = zeros(nturbines) .+ 0.944
+    generator_efficiency = zeros(nturbines) .+ 1.0
 
     # rotor swept area sample points (normalized by rotor radius)
     nrotorpoints = 100

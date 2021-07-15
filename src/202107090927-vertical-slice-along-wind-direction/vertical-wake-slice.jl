@@ -6,7 +6,8 @@ using VectorizedRoutines.Matlab
 
 
 # load flowfarm inputs etc 
-include("../inputfiles/model-sets/bastankhah2014-single-turb-wind-tunnel-case.jl")
+# include("../inputfiles/model-sets/bastankhah2014-single-turb-wind-tunnel-case.jl")
+include("../inputfiles/model-sets/model_set_0_single_turbine.jl")
 
 function vertical_slice(;nearwake=true)
     
@@ -29,7 +30,9 @@ function vertical_slice(;nearwake=true)
     ffvelocities = ff.calculate_flow_field(xrange, yrange, zrange,
     model_set, turbine_x, turbine_y, turbine_z, turbine_yaw,
     rotor_diameter, hub_height, sorted_turbine_index, ct_models, rotor_sample_points_y, rotor_sample_points_z,
-    wind_resource, shearfirst=false)   
+    wind_resource, shearfirst=false)  
+    
+    println(minimum(ffvelocities))
     
     ranges = ["res" xres zres; "max" maxx maxz; "min" minx minz]
 

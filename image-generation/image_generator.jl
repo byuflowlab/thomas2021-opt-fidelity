@@ -917,10 +917,10 @@ function windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
 
 end
 
-function vertical_slice(colors; savefigs=false, showfigs=false)
+function vertical_slice(colors; savefigs=false, showfigs=false, version="interpolated")
 
     # set input values 
-    diam = 0.15
+    diam = 126.4
 
     # load flowfield velocities
     ffvelocities = readdlm("image-data/verification/vertical-slice-interpolated.txt")
@@ -942,14 +942,33 @@ function vertical_slice(colors; savefigs=false, showfigs=false)
     xg, zg = ml.meshgrid(collect(xrange), collect(zrange))
 
     # set contour levels
-    levels = 0.1:0.1:2.6
+    # levels = 1:8.2
+    levels = 0:0.5:9
 
     # get colormap 
     cmap = custum_color_map(idx=[3,2])
     
     # generate contour plot
-    fig, ax = plt.subplots(figsize=(7,3))
-    ax.contourf(xg./diam, zg./diam, ffvelocities, levels, cmap=cmap)
+    fig, ax = plt.subplots(figsize=(7,2))
+    
+    
+    cs = ax.contourf(xg./diam, zg./diam, ffvelocities, levels, cmap=cmap)
+
+    if version == "original"
+        r = plt.matplotlib.patches.Rectangle((0,0),725.4980208718556/diam,2, color="w")
+        ax.add_patch(r)
+    end
+
+    cbar = ax.figure.colorbar(cs, ax=ax, label="Wind Speed (m/s)", orientation="vertical")
+    # cbar.ax.set_xlabel("Wind Speed (m/s)", rotation=270)
+    
+    println(minimum(ffvelocities))
+    println(cs.levels)
+    # ax.clabel(cs, 4:8, inline=1) 
+
+    # add turbine 
+    radius = diam/2
+    ax.plot([0.0,0.0], [90-radius, 90+radius]./diam, linewidth=5, color="k")
 
     # format figure 
     ax.set(xticks=0:4:20, yticks=0:2)
@@ -958,7 +977,7 @@ function vertical_slice(colors; savefigs=false, showfigs=false)
     plt.tight_layout()
 
     if savefigs
-        plt.savefig("images/vertical-slice-interpolated.pdf", transparent=true)
+        plt.savefig("images/vertical-slice-$version.pdf", transparent=true)
     end
 
     # save figure
@@ -984,7 +1003,7 @@ function generate_images_for_publication()
     # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
     # layout(colors, fontsize)
     # opt_comparison_table()
-    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
+    directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
     # horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=1, savefigs=savefigs, showfigs=showfigs)
     # horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=100, savefigs=savefigs, showfigs=showfigs)
@@ -994,5 +1013,6 @@ function generate_images_for_publication()
     # turbine_layouts(colors, case="low-ti-opt", showfigs=showfigs, savefigs=savefigs)
     # turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
 
-    vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
+    # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
+    # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs, version = "original")
 end

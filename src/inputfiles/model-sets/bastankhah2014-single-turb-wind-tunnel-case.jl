@@ -4,7 +4,7 @@ turbine_x = [0.0]
 turbine_y = [0.0]
 turbine_z = [0.0]
 turbine_yaw = [0.0]
-diam = 0.15
+diam = 80.0
 nturbines = 1
 
 # set turbine design parameters
@@ -43,18 +43,18 @@ windprobabilities = [1.0]
 measurementheights = [hub_height[1]]
 wtvelocities = [wind_speed]
 ambient_tis = [0.07]
-shearexponent = 0.15 # just a guess
+shearexponent = 0.08 # just a guess
 wind_shear_model = ff.PowerLawWindShear(shearexponent)
 wind_resource = ff.DiscretizedWindResource(winddirections, windspeeds, windprobabilities, measurementheights, air_density, ambient_tis, wind_shear_model)
 
 # set up wake and related models
-wakedeficitmodel = ff.GaussOriginal(0.04)
+# wakedeficitmodel = ff.GaussOriginal(0.04)
 # k1 = 
 # k2 = 
 # astar = 
 # bstar = 
 
-# wakedeficitmodel = ff.GaussYawVariableSpread()
+wakedeficitmodel = ff.GaussYawVariableSpread()
 
 wakedeflectionmodel = ff.GaussYawVariableSpreadDeflection()
 wakecombinationmodel = ff.LinearLocalVelocitySuperposition()
