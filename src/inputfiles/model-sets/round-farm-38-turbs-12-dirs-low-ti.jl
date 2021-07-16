@@ -28,8 +28,9 @@ function wind_farm_setup(nturbines)
 
     # rotor swept area sample points (normalized by rotor radius)
     nrotorpoints = 100
-    rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints)
-
+    # rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints, method="grid", radius=1)
+    rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints, method="sunflower", radius=1)
+    println(size(rotor_points_y), size(rotor_points_z))
     # load tuned wind speed and ambient ti data 
     windandtidata = readdlm("../202105181144-38-turb-tune-to-sowfa/tuned-parameters-low-ti.csv", ',', skipstart=1)
     tunedwindspeeds = windandtidata[:, 2]

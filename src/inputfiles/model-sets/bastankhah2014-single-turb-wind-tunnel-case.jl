@@ -4,7 +4,7 @@ turbine_x = [0.0]
 turbine_y = [0.0]
 turbine_z = [0.0]
 turbine_yaw = [0.0]
-diam = 80.0
+diam = 0.15
 nturbines = 1
 
 # set turbine design parameters

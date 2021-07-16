@@ -90,7 +90,7 @@ function run_flow_farm(;x=nothing, y=nothing, use_local_ti=true, nsamplepoints=1
     end
     
     # rotor swept area sample points (normalized by rotor radius)
-    rotor_sample_points_y, rotor_sample_points_z = ff.rotor_sample_points(nsamplepoints, alpha=alpha)
+    rotor_sample_points_y, rotor_sample_points_z = ff.rotor_sample_points(nsamplepoints, alpha=alpha, method="grid", radius=0.5, use_perimeter_points=true)
 
     # set up wind resource 
     if windrose == "nantucket"
