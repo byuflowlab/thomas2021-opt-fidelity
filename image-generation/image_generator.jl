@@ -1,3 +1,5 @@
+using FLOWFarm: wake_combination_model
+using Base: NonReshapedReinterpretArray, front
 import PyPlot; const plt = PyPlot
 using DataFrames 
 using CSV
@@ -16,7 +18,7 @@ function custum_color_map(;idx=[3, 1, 4])
     return plt.ColorMap("BlueGrayOrange", colors[idx])
 end
 
-function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true, labelpixels=true, vcolor="w", edgecolor="w", boxmaxmin=true)
+function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true, labelpixels=true, vcolor="w", edgecolor="w", boxmaxmin=true, edgecolors=nothing)
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -45,16 +47,18 @@ function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarl
     minloc = findmin(data)[2]
 
     # label the pixels
-    edgecolors = []
-    if boxmaxmin
-        for i = 1:length(row_labels)
-            for j = 1:length(col_labels)
-                if (i == maxloc[1] && j == maxloc[2])
-                    push!(edgecolors, "k")
-                elseif (i == minloc[1] && j == minloc[2])
-                    push!(edgecolors, "k")
-                else
-                    push!(edgecolors, edgecolor)
+    if edgecolors === nothing
+        edgecolors = []
+        if boxmaxmin
+            for i = 1:length(row_labels)
+                for j = 1:length(col_labels)
+                    if (i == maxloc[1] && j == maxloc[2])
+                        push!(edgecolors, "k")
+                    elseif (i == minloc[1] && j == minloc[2])
+                        push!(edgecolors, "k")
+                    else
+                        push!(edgecolors, edgecolor)
+                    end
                 end
             end
         end
@@ -122,24 +126,28 @@ function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, ima
     rename!(df_model,:Column1 => :h,:Column2 => :s)
     rename!(df_les,:Column1 => :h,:Column2 => :s)
 
+    
     # set variables 
     # zref=90.0 
     # uref=7.87
     # shear=0.091
     # ground=0.0
+
+    maxv = round(maximum(df_model.s), digits=0)
+    minv = round(minimum(df_model.s), digits=0)
     rotor_diameter = 126.4 # m 
     hub_height = 90.0 # m 
     swept_top = hub_height + rotor_diameter/2.0
     swept_bottom = hub_height - rotor_diameter/2.0
 
     # create plot 
-    fig, ax = plt.subplots(figsize=(10.5,4.5))
+    fig, ax = plt.subplots(figsize=(5.5,2.5))
 
     # plot les data 
-    ax.scatter(df_les.s, df_les.h, color=colors[2])
+    ax.scatter(df_les.s, df_les.h, color=colors[2], s=10)
 
     if case=="high-ti"
-        ax.annotate("LES", (7.75, 125), color=colors[2], alpha=1.0, size=fontsize)
+        ax.annotate("LES", (8.9, 130), color=colors[2], alpha=1.0, size=fontsize)
     elseif case=="low-ti"
         ax.annotate("LES", (7.9, 125), color=colors[2], alpha=1.0, size=fontsize)
     end
@@ -148,18 +156,18 @@ function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, ima
     ax.plot(df_model.s, df_model.h, color=colors[3])
 
     if case=="high-ti"
-        ax.annotate("Curve Fit", (8.15, 95), color=colors[3], alpha=1.0, size=fontsize)
+        ax.annotate("Curve Fit", (7.5, 130), color=colors[3], alpha=1.0, size=fontsize)
     elseif case=="low-ti"
         ax.annotate("Curve Fit", (8.25, 95), color=colors[3], alpha=1.0, size=fontsize) 
     end
     # add rotor swept area 
     # ax.plot([minimum(df_model.s), maximum(df_model.s)], [swept_top, swept_top], color=colors[1], linestyle="--")
     # ax.plot([minimum(df_model.s), maximum(df_model.s)], [swept_bottom, swept_bottom], color=colors[1], linestyle="--")
-    ax.fill_between(5:9, swept_bottom,swept_top, alpha=0.15, color=colors[1])
+    ax.fill_between(minv:maxv, swept_bottom,swept_top, alpha=0.15, color=colors[1])
     ax.annotate("Rotor-Swept Region", (5.5, (hub_height+swept_bottom)/2.0), color=colors[1], alpha=1.0, size=fontsize)
 
     # add hub height
-    plt.plot([5,9], [hub_height, hub_height], color=colors[1], linestyle="-.")
+    plt.plot([minv,maxv], [hub_height, hub_height], color=colors[1], linestyle="-.")
 
     # add axis labels
     plt.xlabel("Wind Speed (m/s)", fontsize=fontsize)
@@ -175,11 +183,11 @@ function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, ima
     ax.xaxis.set_ticks_position("bottom")
 
     # set limits 
-    ax.set_xlim([5.0, 9.0])
+    ax.set_xlim([minv, maxv])
     ax.set_ylim([0.0, 310.0])
 
     # set ticks 
-    plt.xticks(5:9, size=fontsize)
+    plt.xticks(minv:maxv, size=fontsize)
     plt.yticks(0:100:300, size=fontsize)
 
     # make sure everything fits 
@@ -362,6 +370,7 @@ function opt_comparison_table()
 end
 
 function directional_comparison_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison")
+    
     # flowfarm base data 
     basepowerfileff = "image-data/power/turbine-power-low-ti-ff-100pts.txt"
 
@@ -384,6 +393,8 @@ function directional_comparison_figure(colors, fontsize; showfigs=false, savefig
     optsowfadf = DataFrame(CSV.File(optpowerfilesowfa, datarow=2, header=false))
     winddf = DataFrame(CSV.File(winddatafile, datarow=2, header=false))
 
+    println("compare")
+    println(sum.(eachcol(baseffdf .- basesowfadf)))
     # name wind data columns 
     rename!(winddf,:Column1 => :d,:Column2 => :s,:Column3 => :p)
 
@@ -431,10 +442,13 @@ end
 
 function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="turbine-comparison", case="low-ti")
     
-    function plot_turbine_heatmap(data, winddirections, vmin, vmax)
+    function plot_turbine_heatmap(data, winddirections, vmin, vmax; wake_count=nothing)
 
         # number of turbines in the farm
         nturbines = 38
+
+        # number of wind directions 
+        ndirections = length(winddirections)
 
         # intialize figure
         fig, ax = plt.subplots(figsize=(8,4))
@@ -442,8 +456,29 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
         # set tick locations and labels
         ticks = vmin:4:vmax
 
-        println(vmax)
-        
+        # determine edge colors based on wake count 
+        if wake_count === nothing
+            edgecolors = nothing
+        else
+            # set colors
+            front_color = "w"
+            back_color = colors[3]
+            mid_color = colors[1]
+            # initialize color array 
+            edgecolors = []
+            for i = 1:ndirections 
+                for j = 1:nturbines 
+                    if wake_count[i,j] == 0 
+                        push!(edgecolors, front_color)
+                    elseif wake_count[i,j] > 2
+                        push!(edgecolors, back_color)
+                    else
+                        push!(edgecolors, mid_color)
+                    end
+                end
+            end
+        end
+
         # generate a custom color map 
         cmap = custum_color_map()
 
@@ -454,7 +489,7 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
         rowlabels = convert.(Int64, round.((winddirections), digits=0))
 
         # create heatmap
-        im, cbar = heatmap(data, rowlabels, 1:nturbines, ax=ax,
+        im, cbar = heatmap(data, rowlabels, 1:nturbines, ax=ax, edgecolors = edgecolors,
                 cbarlabel="Turbine Power Error as Percent of Max SOWFA Turbine Power", cbar_kw=d)
 
         # remove upper and right bounding box
@@ -503,6 +538,10 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
         end
     end
 
+
+    # load wake data 
+    wakecountfile = "image-data/power/turbine_wakes.txt"
+    
     # flowfarm base data 
     basepowerfileff = "image-data/power/turbine-power-low-ti-ff-100pts.txt"
 
@@ -519,6 +558,7 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
     winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
 
     # read files to dataframes
+    wake_count = transpose(readdlm(wakecountfile, ',', skipstart=1, header=false))
     baseff = transpose(readdlm(basepowerfileff, ',', skipstart=1, header=false))
         # DataFrame(CSV.File(basepowerfileff, datarow=2, header=false))
     optff = transpose(readdlm(optpowerfileff, ',', skipstart=1, header=false))
@@ -537,9 +577,21 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
     # calculate turbine errors for base case
     turberror = errors(basesowfa, baseff, method="normbyfirst")
     data = convert.(Int64, round.(turberror.*100, digits=0))
-
+    println(size(data), " ", size(wake_count))
+    println(sum.(eachrow(data[wake_count .> 0])))
+    println(wake_count .> 0)
+    checksum = data[wake_count .> 0]
+    for i = 1:12
+        sumterm = 0
+        for j = 1:38
+            if wake_count[i,j] > 0
+                sumterm += data[i,j]
+            end
+        end
+        println(sumterm)
+    end
     # plot error on heatmap
-    plot_turbine_heatmap(data, winddf.d, vmin, vmax)
+    plot_turbine_heatmap(data, winddf.d, vmin, vmax, wake_count=wake_count)
 
     if savefigs
         plt.savefig(image_directory*image_name*"-"*case*".pdf", transparent=true)
@@ -999,11 +1051,11 @@ function generate_images_for_publication()
     savefigs = true 
     showfigs = true
 
-    # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti")
-    # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
+    wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti")
+    wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
     # layout(colors, fontsize)
     # opt_comparison_table()
-    directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
     # horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=1, savefigs=savefigs, showfigs=showfigs)
     # horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=100, savefigs=savefigs, showfigs=showfigs)

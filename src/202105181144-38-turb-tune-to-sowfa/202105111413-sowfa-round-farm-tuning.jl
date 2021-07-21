@@ -478,7 +478,6 @@ function tune_flowfarm_to_sowfa(;case="low-ti", method="directional")
 
     # tune inflow wind speed(s)
     println("tune speeds")
-    method = "all"
     opt_speeds = tune_wind_speed(winddirections, turbine_x, turbine_y, rotor_diameter, 
                             turbine_powers_by_direction_sowfa, case, method)
     # opt_speeds = [8.055]

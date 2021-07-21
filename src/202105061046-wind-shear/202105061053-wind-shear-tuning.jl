@@ -4,27 +4,29 @@ using DataFrames
 import PyPlot; const plt=PyPlot
 using LsqFit
 
-function obj_func(h, p; href=0.245, sref=7.8)
+function obj_func(h, p; href=0.245, gref=0.0)
     #href=80.0, sref=8.0, hg=0.0 for sowfa
     # for Bastankhah href = 70, sref = 9.0
     # constants
+    exponent = p[1]
     reference_height = href #p[3]
     reference_speed = p[2]
-    ground_height = 0.0
+    ground_height = gref
     
     # get number of points for fitting
     npoints = length(h)
 
     # initialize shear model 
-    if p[1] < 0; p[1] = 0.0; end
+    # if p[1] < 0; p[1] = 0.0; end
     # if p[2] < 0; p[2] = 0.0; end
-    shear_model = ff.PowerLawWindShear(p[1], ground_height)
+    shear_model = ff.PowerLawWindShear(exponent, ground_height)
 
     # calc v by model
     v_calc = zeros(npoints)
     for i in 1:npoints
         v_calc[i] = ff.adjust_for_wind_shear(h[i], reference_speed, reference_height, ground_height, shear_model)
     end
+
     return v_calc
 end
 
@@ -32,7 +34,7 @@ function sowfa_shear(;case="high-ti")
     # set data file name for LES data
     # datafile = "../inputfiles/wind-shear-les.txt"
     
-    datafile = "../inputfiles/results/LES/$(case)/shear/uaveraged.txt"
+    datafile = "../202106291409-les-data-parsing/wind-shear-les-$case.txt"
     
     # load data to data frame
     df = DataFrame(CSV.File(datafile, header=0, datarow=2))
@@ -40,19 +42,21 @@ function sowfa_shear(;case="high-ti")
     rename!(df,:Column1 => :h,:Column2 => :s)
 
     # optimize fit
-    initial_shear = 0.9
+    initial_shear = 0.1
     initial_ground = 0.0
     initial_zref = 90.0
-    initial_uref = 7.9
+    initial_uref = 9.0
+    obj_func_local(h, p) = obj_func(h, p, href=initial_zref, gref=initial_ground)
     # fit = curve_fit(obj_func, df.h[90.0-126.4/2 .< df.h .< 90.0+126.4/2], df.s[90.0-126.4/2 .< df.h .< 90.0+126.4/2], [initial_shear, initial_ground, initial_zref, initial_uref])
-    fit = curve_fit(obj_func, df.h[5 .< df.h ], df.s[5 .< df.h ], [initial_shear, initial_ground, initial_zref, initial_uref])
+    # fit = curve_fit(obj_func, df.h[5 .< df.h ], df.s[5 .< df.h ], [initial_shear, initial_ground, initial_zref, initial_uref])
+    fit = curve_fit(obj_func_local, df.h[5 .< df.h ], df.s[5 .< df.h ], [initial_shear, initial_uref])
     # fit = curve_fit(obj_func, df.h, df.s, [initial_shear, initial_ground, initial_zref, initial_uref])
 
     # final_shear = 0.35
     final_shear = fit.param[1]
-    final_ground = fit.param[2]
-    final_zref = 90.0 #fit.param[3]
-    final_uref = fit.param[4]
+    final_ground = initial_ground
+    final_zref = initial_zref
+    final_uref = fit.param[2]
 
     # set resolution of model data
     res = 300
@@ -65,7 +69,7 @@ function sowfa_shear(;case="high-ti")
 
     # calculate speeds at each height
     for i in 1:res
-        v_calc[i] = ff.adjust_for_wind_shear(h_calc[i], 8.2, final_zref, final_ground, shear_model)
+        v_calc[i] = ff.adjust_for_wind_shear(h_calc[i], final_uref, final_zref, final_ground, shear_model)
     end
 
     # put model results in data frame
@@ -74,7 +78,7 @@ function sowfa_shear(;case="high-ti")
 
     # plot LES data and model results
     fig, ax = plt.subplots()
-    ax.scatter(df.s, df.h, label="LES")
+    ax.scatter(df.s, df.h, label="LES", markersize=1)
     ax.plot([5.5,9.0],[90.0+126.4/2.0,90.0+126.4/2.0], label="Swept Area", c="Blue", linestyle="--")
     ax.plot([5.5,9.0],[90.0-126.4/2.0,90.0-126.4/2.0], c="Blue", label="", linestyle="--")
     ax.plot(df2.s, df2.h, label="Model")

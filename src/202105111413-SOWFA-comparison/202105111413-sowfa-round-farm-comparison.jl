@@ -90,7 +90,7 @@ function run_flow_farm(;x=nothing, y=nothing, use_local_ti=true, nsamplepoints=1
     end
     
     # rotor swept area sample points (normalized by rotor radius)
-    rotor_sample_points_y, rotor_sample_points_z = ff.rotor_sample_points(nsamplepoints, alpha=alpha, method="grid", radius=0.5, use_perimeter_points=true)
+    rotor_sample_points_y, rotor_sample_points_z = ff.rotor_sample_points(nsamplepoints, alpha=alpha, method="sunflower", radius=0.5, use_perimeter_points=true)
 
     # set up wind resource 
     if windrose == "nantucket"
@@ -327,7 +327,7 @@ function sowfa_base_comparison(nsamplepoints=1; case="low-ti")
     turbine_powers_by_direction_ff = run_flow_farm(x=turbine_x, y=turbine_y, use_local_ti=true, 
         nsamplepoints=nsamplepoints, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, case=case, ti=0.0456610699321765, ws=8.0550061514824, wd=0)
 
-    # calulate various errors types 
+    # calculate various errors types 
     absoluteerror = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="absolute")
     normbymax = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyfirst")
     normbyrated = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyrated")
@@ -335,10 +335,16 @@ function sowfa_base_comparison(nsamplepoints=1; case="low-ti")
     turberror = normbymax
     data = convert.(Int64, round.(turberror.*100, digits=0))
 
+    # find waked turbines 
+    wake_count = ff.wake_count_iec(turbine_x, turbine_y, winddirections, rotor_diameter)
+    dfwc = DataFrame(wake_count',:auto)
+
     # save data 
     dfff = DataFrame(turbine_powers_by_direction_ff', :auto)
     CSV.write("turbine_power_ff_$(nsamplepoints)pts.txt", dfff, header=string.(round.(winddirections.*180.0./pi, digits=0)))
-
+    dfwc = DataFrame(wake_count',:auto)
+    CSV.write("turbine_wakes.txt", dfwc, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+    
     nturbines = length(turbine_x)
     fig, ax = plt.subplots(figsize=(15, 15))
     ticks = minimum(data):5:maximum(data)
@@ -452,4 +458,16 @@ function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarl
     end
 
     return im, cbar
+end
+
+function get_upstream_turbines(;layout="base")
+
+    # load wind farm information 
+    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-$(case).jl")
+
+    # get upstream turbines 
+    upstream_turbines = ff.wake_count()
+
+    # return upstream turbines in a csv
+
 end
