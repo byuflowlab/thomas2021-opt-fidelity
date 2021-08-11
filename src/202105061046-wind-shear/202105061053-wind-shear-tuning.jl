@@ -78,7 +78,7 @@ function sowfa_shear(;case="high-ti")
 
     # plot LES data and model results
     fig, ax = plt.subplots()
-    ax.scatter(df.s, df.h, label="LES", markersize=1)
+    ax.scatter(df.s, df.h, label="LES")
     ax.plot([5.5,9.0],[90.0+126.4/2.0,90.0+126.4/2.0], label="Swept Area", c="Blue", linestyle="--")
     ax.plot([5.5,9.0],[90.0-126.4/2.0,90.0-126.4/2.0], c="Blue", label="", linestyle="--")
     ax.plot(df2.s, df2.h, label="Model")

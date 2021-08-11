@@ -121,7 +121,7 @@ k2 = 0.003678
 alpha = alphastar/4.0
 beta = betastar/2.0
 
-ti = 0.046
+ti = 0.061
 
 params = {
     'Wake Velocity Parameters': {'alpha': alpha},
@@ -136,6 +136,7 @@ params = {
     'Wake Deflection Parameters': {'kb': k2},
     'Wake Turbulence Parameters': {'ti_initial': ti}
 }
+
 print('\n')
 
 fi.set_model_parameters(params)
@@ -153,25 +154,28 @@ wind_rose.plot_wind_rose()
 # =============================================================================
 print("Finding power with and without wakes in FLORIS...")
 # =============================================================================
+print(df.ws)
+print(df.freq_val)
+AEP = fi.get_farm_AEP(df.wd, df.ws, df.freq_val, limit_ws=False)
 
 # Instantiate the Optimization object
 # Note that the optimization is not performed in this example.
-yaw_opt = YawOptimizationWindRose(fi, df.wd, df.ws, minimum_ws=minimum_ws)
+# yaw_opt = YawOptimizationWindRose(fi, df.wd, df.ws, minimum_ws=minimum_ws)
 
-# Determine baseline power with and without wakes
-df_base = yaw_opt.calc_baseline_power()
+# # Determine baseline power with and without wakes
+# df_base = yaw_opt.calc_baseline_power()
 
-# Initialize power rose
-case_name = "Round Wind Farm"
-power_rose = pr.PowerRose()
-power_rose.make_power_rose_from_user_data(
-    case_name, df, df_base["power_no_wake"], df_base["power_baseline"]
-)
+# # Initialize power rose
+# case_name = "Round Wind Farm"
+# power_rose = pr.PowerRose()
+# power_rose.make_power_rose_from_user_data(
+#     case_name, df, df_base["power_no_wake"], df_base["power_baseline"]
+# )
 
-# Display AEP analysis
-fig, axarr = plt.subplots(2, 1, sharex=True, figsize=(6.4, 6.5))
-power_rose.plot_by_direction(axarr)
-power_rose.report()
-print("AEP: ", power_rose.total_baseline)
+# # Display AEP analysis
+# fig, axarr = plt.subplots(2, 1, sharex=True, figsize=(6.4, 6.5))
+# power_rose.plot_by_direction(axarr)
+# power_rose.report()
+print("AEP: ", AEP*1E-9)
 
-plt.show()
+# plt.show()

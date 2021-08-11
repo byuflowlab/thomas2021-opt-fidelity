@@ -1,4 +1,5 @@
 import FLOWFarm; const ff = FLOWFarm
+using Statistics
 
 function wind_farm_setup(nturbines)
     # set initial turbine x and y locations
@@ -23,24 +24,33 @@ function wind_farm_setup(nturbines)
     cut_out_speed = zeros(nturbines) .+25.  # m/s
     rated_speed = zeros(nturbines) .+11.4  # m/s
     rated_power = zeros(nturbines) .+5.0E6  # W
-    generator_efficiency = zeros(nturbines) .+ 0.944
+    generator_efficiency = zeros(nturbines) .+ 1.0
 
     # rotor swept area sample points (normalized by rotor radius)
     nrotorpoints = 100
-    rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints)
+    # rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints, method="grid", pradius=1)
+    rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints, method="sunflower", pradius=1)
+    # println(size(rotor_points_y), size(rotor_points_z))
+    # load tuned wind speed and ambient ti data 
+    # windandtidata = readdlm("../202105181144-38-turb-tune-to-sowfa/tuned-parameters-low-ti.csv", ',', skipstart=1)
+    windandtidata = readdlm("../202105181144-38-turb-tune-to-sowfa/tuned-parameters-low-ti-alldirections.csv", ',', skipstart=1)
+    tunedwindspeeds = windandtidata[:, 2]
 
     # set flow parameters
     winddata = readdlm("../inputfiles/wind/windrose_nantucket_12dir.txt", ' ', skipstart=1)
     winddirections = winddata[:,1].*pi./180.0
-    windspeeds = zeros(length(winddirections)) .+ 7.87 # winddata[:,2]
+    nstates = length(winddirections)
+    windspeeds = zeros(nstates) .+ mean(tunedwindspeeds) #tunedwindspeeds  #zeros(nstates) .+ mean(tunedwindspeeds) #zeros(length(winddirections)) .+ 7.99 # winddata[:,2]
     windprobabilities = winddata[:,3]
-    nstates = length(windspeeds)
+    
 
     air_density = 1.225  # kg/m^3 (from Jen)
-    ambient_ti = 0.108
-    shearexponent = 0.091 #0.31
 
-    ambient_tis = zeros(nstates) .+ ambient_ti
+    tunedti = windandtidata[:,3]
+    ambient_ti = mean(tunedti)
+    shearexponent = 0.084 
+
+    ambient_tis =  zeros(nstates) .+ ambient_ti #tunedti
     measurementheight = zeros(nstates) .+ 90.0 #80.0
 
     # load power curve
@@ -59,6 +69,7 @@ function wind_farm_setup(nturbines)
     ctdata = readdlm("../inputfiles/turbines/nrel-5mw/NREL5MWCPCT.txt", skipstart=1)
     velpoints = ctdata[:,1]
     ctpoints = ctdata[:,3]
+    # ctpoints[ctpoints .>= 1.0] .= 0.9
 
     # initialize thurst model
     ct_model = ff.ThrustModelCtPoints(velpoints, ctpoints)
@@ -92,7 +103,10 @@ function wind_farm_setup(nturbines)
     # wakedeficitmodel = ff.JensenTopHat()
     wakedeflectionmodel = ff.GaussYawVariableSpreadDeflection(alphastar, betastar, k1, k2)
     wakecombinationmodel = ff.LinearLocalVelocitySuperposition()
+    # wakecombinationmodel = ff.LinearFreestreamSuperposition()
+    # wakecombinationmodel = ff.SumOfSquaresLocalVelocitySuperposition()
     localtimodel = ff.LocalTIModelMaxTI(alphastar, betastar, k1, k2)
+    # localtimodel = ff.LocalTIModelNoLocalTI()
 
     # initialize model set
     model_set = ff.WindFarmModelSet(wakedeficitmodel, wakedeflectionmodel, wakecombinationmodel, localtimodel)

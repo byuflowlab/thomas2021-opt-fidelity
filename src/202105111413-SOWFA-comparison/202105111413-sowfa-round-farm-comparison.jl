@@ -29,23 +29,30 @@ function format_sowfa_data(sowfa_les_data, nstates, nturbines)
     
 end
 
-function get_data(;journal=false,case="high-ti")
-    # load Niayifar LES data 
-    if case == "high-ti"
-        lesfile = "../inputfiles/results-thomas-2019/thomas2019-FinalDirectionalGeneratorPowerOutputBaseline.txt"
-    elseif case == "low-ti"
-        lesfile = "../inputfiles/results/LES/low-ti/turbine-power-low-ti.txt"
-    end
+function get_data(;journal=false,case="high-ti",opt=false)
 
-    sowfa_les_data = readdlm(lesfile, skipstart=0) 
-    if case == "high-ti"
-        sowfa_les_data = sowfa_les_data[:,1:5]
+    if opt == true
+        lesfile = "../../image-generation/image-data/power/turbine-power-$case-les-opt.txt"
+        turbine_powers_by_direction_sowfa = zeros((12,38))
+        turbine_powers_by_direction_sowfa[:,:] = transpose(readdlm(lesfile, skipstart=1))
 
-        turbine_powers_by_direction_sowfa = format_sowfa_data(sowfa_les_data, 12, 38)
+    elseif opt == "both"
+        lesfile1 = "../../image-generation/image-data/power/turbine-power-$case-les.txt"
+        turbine_powers_by_direction_sowfa1 = zeros((12,38))
+        turbine_powers_by_direction_sowfa1[:,:] = transpose(readdlm(lesfile1, skipstart=1))
+
+        lesfile2 = "../../image-generation/image-data/power/turbine-power-$case-les-opt.txt"
+        turbine_powers_by_direction_sowfa2 = zeros((12,38))
+        turbine_powers_by_direction_sowfa2[:,:] = transpose(readdlm(lesfile2, skipstart=1))
+
+        turbine_powers_by_direction_sowfa = [turbine_powers_by_direction_sowfa1, turbine_powers_by_direction_sowfa2]
+
     else
+        lesfile = "../../image-generation/image-data/power/turbine-power-$case-les.txt"
         turbine_powers_by_direction_sowfa = zeros((12,38))
         turbine_powers_by_direction_sowfa[:,:] = transpose(readdlm(lesfile, skipstart=1))
     end
+    
     # println(size(turbine_powers_by_direction_sowfa))
     # load plantenergy data
     if journal
@@ -63,14 +70,32 @@ function get_data(;journal=false,case="high-ti")
     return turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019
 end
 
-function run_flow_farm(;x=nothing, y=nothing, use_local_ti=true, nsamplepoints=1, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, case="high-ti", ti=0, ws=0, wd=0)
+function run_flow_farm(farmfunc ;x=nothing, y=nothing, use_local_ti=true, nsamplepoints=1, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, case="high-ti", ti=0, ws=0, wd=0, opt=false, p=nothing)
     # load FLOWFarm modelset
-    filename = "../inputfiles/model-sets/round-farm-38-turbs-12-dirs-$(case).jl"
-    include(filename)
+    if farmfunc === nothing
+        filename = "../inputfiles/model-sets/round-farm-38-turbs-12-dirs-$(case)-alldirections.jl"
     
-    if x === nothing
+        include(filename)
+        farmfunc = wind_farm_setup
+    end
+    
+    diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, cut_in_speed, 
+    cut_out_speed, rated_speed, rated_power, generator_efficiency, nrotorpoints, 
+    rotor_points_y, rotor_points_z, winddirections, windspeeds, windprobabilities, 
+    air_density, ambient_ti, shearexponent, ambient_tis, measurementheight, power_models, 
+    ct_models, wind_shear_model, sorted_turbine_index, wind_resource, wakedeficitmodel, 
+    wakedeflectionmodel, wakecombinationmodel, localtimodel, model_set = farmfunc(38)
+    
+    if (x === nothing) && !opt
         turbine_xp = turbine_x .+ 2000.0
         turbine_yp = turbine_y .+ 2000.0
+    elseif opt 
+        xy = readdlm("../../image-generation/image-data/layouts/opt/optresultsmilestone.csv",',',skipstart=1)
+        turbine_xp = xy[:,1]
+        turbine_yp = xy[:,2]
+        # println("xy", xy)
+        # println("turb x: $turbine_xp")
+        # println("turb y: $turbine_yp")
     else
         turbine_xp = x 
         turbine_yp = y
@@ -90,11 +115,18 @@ function run_flow_farm(;x=nothing, y=nothing, use_local_ti=true, nsamplepoints=1
     end
     
     # rotor swept area sample points (normalized by rotor radius)
-    rotor_sample_points_y, rotor_sample_points_z = ff.rotor_sample_points(nsamplepoints, alpha=alpha, method="sunflower", radius=0.5, use_perimeter_points=true)
+    rotor_sample_points_y, rotor_sample_points_z = ff.rotor_sample_points(nsamplepoints, alpha=alpha, method="sunflower", pradius=1.0, use_perimeter_points=true)
 
     # set up wind resource 
     if windrose == "nantucket"
-        if (ti > 0.0) | (ws > 0.0)
+        if p !== nothing 
+            windspeeds_local = p[:,2]
+            ambient_tis_local = p[:,3]
+            winddirections_local = winddirections
+            windprobabilities_local = windprobabilities
+            measurementheight_local = measurementheight
+            wind_resource_local = ff.DiscretizedWindResource(winddirections_local, windspeeds_local, windprobabilities_local, measurementheight_local, air_density, ambient_tis_local, wind_shear_model)
+        elseif (ti > 0.0) | (ws > 0.0)
             if ti > 0.0
                 ambient_tis_local = zeros(length(winddirections)) .+ ti
             else
@@ -129,10 +161,11 @@ function run_flow_farm(;x=nothing, y=nothing, use_local_ti=true, nsamplepoints=1
 
         # initialize the wind resource definition
         wind_resource_local = ff.DiscretizedWindResource(winddirection, windpeed, windprobability, windheight, air_density, windtis, wind_shear_model)
-
     end
+
+    
     # run FLOWFarm with local ti
-    println("x: $(turbine_xp) \ny: $(turbine_yp)")
+    # println("x: $(turbine_xp) \ny: $(turbine_yp)")
     turbine_powers_by_direction_ff = ff.calculate_state_turbine_powers(turbine_xp, turbine_yp, turbine_z, rotor_diameter,
         hub_height, turbine_yaw, ct_models, generator_efficiency, cut_in_speed,
         cut_out_speed, rated_speed, rated_power, wind_resource_local, power_models, model_set_internal,
@@ -217,7 +250,7 @@ function tune_flow_farm()
 
     # tune front turbines for wind speed 
     fit = curve_fit(obj_func_windspeed, front_turbines, front_turbines_power, [8.0])
-    println(fit)
+    # println(fit)
 
     # select rear turbines to tune for TI 
     rear_turbines = zeros(nstates)
@@ -230,7 +263,7 @@ function tune_flow_farm()
 
     # tune rear turbines for TI 
     fit = curve_fit(obj_func_ti, rear_turbines, rear_turbines_power, [0.108])
-    println(fit)
+    # println(fit)
     tiout = fit.param[1]
 
     # return wind speed and TI values from tuning
@@ -306,7 +339,7 @@ function plot_comparisons(turbinex, turbiney, rotordiameter, comparisons, names)
     display(p)
 end
 
-function custum_color_map()
+function custom_color_map()
     colors = [colorant"#BDB8AD", colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"]
     # @pyimport matplotlib.colors as matcolors
     # cmap = matcolors.ListedColormap([(1,0,0),(0,1,0),(0,0,1)],"A")
@@ -315,43 +348,66 @@ function custum_color_map()
 end
 
 # function to compare directions 
-function sowfa_base_comparison(nsamplepoints=1; case="low-ti")
+function sowfa_base_comparison(nsamplepoints=1; case="low-ti", tuning="alldirections", opt=false, guess=false)
 
     # load wind farm information 
-    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-$(case).jl")
+    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-$case-$tuning.jl")
 
     # load data
-    turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019 = get_data(case=case)
+    turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019 = get_data(case=case, opt=opt)
+
+    if opt == true
+        xy = readdlm("../../image-generation/image-data/layouts/opt/optresultsmilestone.csv", ',', skipstart=1)
+        println(size(xy[1]))
+        turbine_x_local = xy[:,1]
+        turbine_y_local = xy[:,2]
+        tail = "-opt"
+    else
+        tail = ""
+        turbine_x_local = turbine_x
+        turbine_y_local = turbine_y
+    end
+
+    if tuning == "alldirections-ws-and-ti-both" || tuning == "all-ws-and-ti-both"
+        paramfile = "../202105181144-38-turb-tune-to-sowfa/tuned-parameters-$case-$tuning.csv"
+    elseif guess
+        paramfile = "../202105181144-38-turb-tune-to-sowfa/tuned-parameters-$case-guess.csv"
+    else
+        paramfile = "../202105181144-38-turb-tune-to-sowfa/tuned-parameters-$case-$tuning$tail.csv"
+    end
+    
+    p = readdlm(paramfile, ',', skipstart=1)
 
     # run FLOWFarm
-    turbine_powers_by_direction_ff = run_flow_farm(x=turbine_x, y=turbine_y, use_local_ti=true, 
-        nsamplepoints=nsamplepoints, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, case=case, ti=0.0456610699321765, ws=8.0550061514824, wd=0)
+    turbine_powers_by_direction_ff = run_flow_farm(wind_farm_setup, x=turbine_x_local, y=turbine_y_local, use_local_ti=true, 
+        nsamplepoints=nsamplepoints, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, case=case, p=p)#ti=0.0456610699321765
 
     # calculate various errors types 
-    absoluteerror = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="absolute")
+    # absoluteerror = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="absolute")
     normbymax = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyfirst")
-    normbyrated = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyrated")
-    normindividually = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normalizedindividually")
+    # normbyrated = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normbyrated")
+    # normindividually = errors(turbine_powers_by_direction_sowfa, turbine_powers_by_direction_ff, method="normalizedindividually")
     turberror = normbymax
     data = convert.(Int64, round.(turberror.*100, digits=0))
 
     # find waked turbines 
-    wake_count = ff.wake_count_iec(turbine_x, turbine_y, winddirections, rotor_diameter)
+    wake_count = ff.wake_count_iec(turbine_x_local, turbine_y_local, winddirections, rotor_diameter)
     dfwc = DataFrame(wake_count',:auto)
 
     # save data 
     dfff = DataFrame(turbine_powers_by_direction_ff', :auto)
-    CSV.write("turbine_power_ff_$(nsamplepoints)pts.txt", dfff, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+
+    CSV.write("turbine-power-ff-$(nsamplepoints)pts-$case-$tuning$tail.txt", dfff, header=string.(round.(winddirections.*180.0./pi, digits=0)))
     dfwc = DataFrame(wake_count',:auto)
-    CSV.write("turbine_wakes.txt", dfwc, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+    CSV.write("turbine-wakes-$case-$tuning$tail.txt", dfwc, header=string.(round.(winddirections.*180.0./pi, digits=0)))
     
-    nturbines = length(turbine_x)
+    nturbines = length(turbine_x_local)
     fig, ax = plt.subplots(figsize=(15, 15))
     ticks = minimum(data):5:maximum(data)
     colors = ["#BDB8AD", "#85C0F9", "#0F2080", "#F5793A", "#A95AA1", "#382119"]
     # cs1 = ColorScheme(range(colorant"#0F2080", colorant"#F5793A", length=10)).colors
     # colormap = [(x.r, x.g, x.b) for x in cs1]
-    cmap = custum_color_map()
+    cmap = custom_color_map()
     d = Dict(:shrink => 0.47, :ticks=>ticks, :aspect=>20, :orientation=>"horizontal", :cmap=>cmap)
     
     rowlabels = convert.(Int64, round.((winddirections.*180.0./pi), digits=0))
@@ -362,6 +418,7 @@ function sowfa_base_comparison(nsamplepoints=1; case="low-ti")
     directionalpowers_ff = reshape(sum(turbine_powers_by_direction_ff,dims=2), 12)
     directionalpowers_sowfa = reshape(sum(turbine_powers_by_direction_sowfa,dims=2), 12)
     directionalerrors = (directionalpowers_sowfa .- directionalpowers_ff)./directionalpowers_sowfa
+   
     aep_ff = 365.0.*24.0.*sum(wind_resource.wind_probabilities.*directionalpowers_ff)
     aep_sowfa = 365.0.*24.0.*sum(wind_resource.wind_probabilities.*directionalpowers_sowfa)
     aep_error = (aep_sowfa - aep_ff)/aep_sowfa
@@ -458,16 +515,4 @@ function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarl
     end
 
     return im, cbar
-end
-
-function get_upstream_turbines(;layout="base")
-
-    # load wind farm information 
-    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-$(case).jl")
-
-    # get upstream turbines 
-    upstream_turbines = ff.wake_count()
-
-    # return upstream turbines in a csv
-
 end

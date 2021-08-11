@@ -3,7 +3,8 @@ using PyPlot; const plt = PyPlot
 using PrettyTables
 
 include("../202105111413-SOWFA-comparison/202105111413-sowfa-round-farm-comparison.jl")
-include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-low-ti.jl")
+include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-low-ti-alldirections.jl")
+
 diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, cut_in_speed, 
     cut_out_speed, rated_speed, rated_power, generator_efficiency, nrotorpoints, 
     rotor_points_y, rotor_points_z, winddirections, windspeeds, windprobabilities, 
@@ -11,7 +12,7 @@ diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, 
     ct_models, wind_shear_model, sorted_turbine_index, wind_resource, wakedeficitmodel, 
     wakedeflectionmodel, wakecombinationmodel, localtimodel, model_set = wind_farm_setup(38)
 
-function calculate_results(nsamplepoints=100, case="low-ti")
+function calculate_results(nsamplepoints=100, case="low-ti", tuning="alldirections")
 
     datafile = "../../image-generation/image-data/layouts/opt/optresultsmilestone.csv"
 
@@ -21,24 +22,25 @@ function calculate_results(nsamplepoints=100, case="low-ti")
     # name columns 
     rename!(df,:Column1 => :x,:Column2 => :y)
 
-    turbine_powers_by_direction_ff = run_flow_farm(nsamplepoints=nsamplepoints, x=df.x, y=df.y, case=case)
+    turbine_powers_by_direction_ff = run_flow_farm(wind_farm_setup, x=df.x, y=df.y, use_local_ti=true, 
+    nsamplepoints=nsamplepoints, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, case=case)#ti=0.0456610699321765
 
     # save data 
     df = DataFrame(turbine_powers_by_direction_ff', :auto)
-    CSV.write("turbine-power-ff-$(nsamplepoints)pts-opt.txt", df, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+    CSV.write("turbine-power-ff-$(nsamplepoints)pts-$case-$tuning-opt.txt", df, header=string.(round.(winddirections.*180.0./pi, digits=0)))
 
 end
 
-function opt_comparison()
+function opt_comparison(;case="low-ti", tuning="alldirections")
 
     # load flowfar base data 
-    basepowerfileff = "../202105111413-SOWFA-comparison/turbine_power_ff_100pts.txt"
+    basepowerfileff = "../202105111413-SOWFA-comparison/turbine-power-ff-100pts-$case-$tuning.txt"
 
     # load sowfa base data
     basepowerfilesowfa = "../inputfiles/results/LES/low-ti/turbine-power-low-ti.txt"
 
     # load flowfarm opt data 
-    optpowerfileff = "turbine-power-ff-100pts-opt.txt"
+    optpowerfileff = "turbine-power-ff-100pts-$case-$tuning-opt.txt"
 
     # load sowfa opt data 
     optpowerfilesowfa = "../inputfiles/results/LES/low-ti/turbine-power-low-ti-opt.txt"

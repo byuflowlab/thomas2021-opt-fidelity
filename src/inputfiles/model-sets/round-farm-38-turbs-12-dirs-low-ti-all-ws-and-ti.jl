@@ -28,13 +28,13 @@ function wind_farm_setup(nturbines)
 
     # rotor swept area sample points (normalized by rotor radius)
     nrotorpoints = 100
-    # rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints, method="grid", radius=1)
-    rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints, method="sunflower", radius=1)
-    println(size(rotor_points_y), size(rotor_points_z))
+    # rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints, method="grid", pradius=1)
+    rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints, method="sunflower", pradius=1)
+    # println(size(rotor_points_y), size(rotor_points_z))
     # load tuned wind speed and ambient ti data 
-    windandtidata = readdlm("../202105181144-38-turb-tune-to-sowfa/tuned-parameters-low-ti.csv", ',', skipstart=1)
+    # windandtidata = readdlm("../202105181144-38-turb-tune-to-sowfa/tuned-parameters-low-ti.csv", ',', skipstart=1)
+    windandtidata = readdlm("../202105181144-38-turb-tune-to-sowfa/tuned-parameters-low-ti-alldirections.csv", ',', skipstart=1)
     tunedwindspeeds = windandtidata[:, 2]
-    
 
     # set flow parameters
     winddata = readdlm("../inputfiles/wind/windrose_nantucket_12dir.txt", ' ', skipstart=1)
@@ -47,8 +47,8 @@ function wind_farm_setup(nturbines)
     air_density = 1.225  # kg/m^3 (from Jen)
 
     tunedti = windandtidata[:,3]
-    ambient_ti = mean(tunedti) #0.05
-    shearexponent = 0.084 #0.31
+    ambient_ti = mean(tunedti)
+    shearexponent = 0.084 
 
     ambient_tis =  zeros(nstates) .+ ambient_ti #tunedti
     measurementheight = zeros(nstates) .+ 90.0 #80.0
@@ -103,6 +103,7 @@ function wind_farm_setup(nturbines)
     # wakedeficitmodel = ff.JensenTopHat()
     wakedeflectionmodel = ff.GaussYawVariableSpreadDeflection(alphastar, betastar, k1, k2)
     wakecombinationmodel = ff.LinearLocalVelocitySuperposition()
+    # wakecombinationmodel = ff.LinearFreestreamSuperposition()
     # wakecombinationmodel = ff.SumOfSquaresLocalVelocitySuperposition()
     localtimodel = ff.LocalTIModelMaxTI(alphastar, betastar, k1, k2)
     # localtimodel = ff.LocalTIModelNoLocalTI()
