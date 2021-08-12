@@ -33,7 +33,9 @@ function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layouti
     # load tuned wind speed and ambient ti data 
 
     windandtidata = readdlm("../202105181144-38-turb-tune-to-sowfa/tuned-parameters-$case-$tuning.csv", ',', skipstart=1)
-    tunedwindspeeds = windandtidata[:, 2]
+    tunedwindspeeds = windandtidata[:, 2].*0.0 .+ 8.055
+    tunedti = windandtidata[:,3]
+    ambient_ti = mean(tunedti)*0.0 + 0.046
 
     # set flow parameters
     winddata = readdlm("../inputfiles/wind/windrose_nantucket_12dir.txt", ' ', skipstart=1)
@@ -41,23 +43,22 @@ function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layouti
     nstates = length(winddirections)
     windspeeds = zeros(nstates) .+ mean(tunedwindspeeds) #tunedwindspeeds  #zeros(nstates) .+ mean(tunedwindspeeds) #zeros(length(winddirections)) .+ 7.99 # winddata[:,2]
     windprobabilities = winddata[:,3]
-    
+    ambient_tis =  zeros(nstates) .+ ambient_ti #tunedti
+    measurementheight = zeros(nstates) .+ 90.0 #80.0
     air_density = 1.225  # kg/m^3 (from Jen)
-
-    tunedti = windandtidata[:,3]
-    ambient_ti = mean(tunedti)
+    
     if case == "high-ti"
         shearexponent = 0.175 
     else
         shearexponent = 0.084 
     end
-    ambient_tis =  zeros(nstates) .+ ambient_ti #tunedti
-    measurementheight = zeros(nstates) .+ 90.0 #80.0
+    
 
-    # load power curve
-    powerdata = readdlm("../inputfiles/turbines/nrel-5mw/NREL5MWCPCT.txt", skipstart=1)
-    velpoints = powerdata[:,1]
-    cppoints = powerdata[:,2]
+    # load power and thrust curves
+    cpctdata = readdlm("../inputfiles/turbines/nrel-5mw/NREL5MWCPCT.txt", skipstart=1)
+    velpoints = cpctdata[:,1]
+    cppoints = cpctdata[:,2]
+    ctpoints = cpctdata[:,3]
 
     # initialize power model
     power_model = ff.PowerModelCpPoints(velpoints, cppoints)
@@ -66,17 +67,11 @@ function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layouti
         power_models[i] = power_model
     end
 
-    # load thrust curve
-    ctdata = readdlm("../inputfiles/turbines/nrel-5mw/NREL5MWCPCT.txt", skipstart=1)
-    velpoints = ctdata[:,1]
-    ctpoints = ctdata[:,3]
-    # ctpoints[ctpoints .>= 1.0] .= 0.9
+    # make sure ct is not going into fan state
+    ctpoints[ctpoints .>= 1.0] .= 0.999
 
-    # initialize thurst model
+    # initialize thrust model
     ct_model = ff.ThrustModelCtPoints(velpoints, ctpoints)
-    # axial_induction = 1.0/3.0
-    # Ct = 4.0 * axial_induction * (1.0 - axial_induction)
-    # ct_model = ff.ThrustModelConstantCt(Ct)
     ct_models = Vector{typeof(ct_model)}(undef, nturbines)
     for i = 1:nturbines
         ct_models[i] = ct_model

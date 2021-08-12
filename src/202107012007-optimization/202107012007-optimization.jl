@@ -5,11 +5,9 @@ using DelimitedFiles
 using PyPlot
 using DataFrames
 using CSV
-# using Distrib@uted
+# using Distributed
 using ProgressMeter
 
-# import model set with wind farm and related details
-# include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-low-ti.jl")
 # import model set with wind farm and related details
 include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-opt.jl")
 
@@ -128,7 +126,8 @@ function wind_farm_opt!(g, x, params; xhistory=nothing)
     # flush(stdout)
     # save steps to history
     if xhistory !== nothing 
-        push!(xhistory, x)
+        xfloat = [x[i].value for i in 1:length(x)]
+        push!(xhistory, xfloat)
     end
     
     return AEP #, dAEP_dx, dcdx, fail
@@ -177,26 +176,34 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
         ct_models, generator_efficiency, cut_in_speed, cut_out_speed, rated_speed, rated_power, 
         wind_resource, power_models)
     
-    params_base = set_up_base_params(params)
+    params_base = set_up_base_params(params, alpha=alpha, nrotorpoints=100)
     aep_init_base = aep_wrapper([copy(turbine_x);copy(turbine_y)], params_base)
 
     # initialize design variable array
     x0 = [copy(turbine_x);copy(turbine_y)]
-    xinit = deepcopy(x0)
+
+    # print stuff if desired
     if verbose
-        println(size(x0))
+        println("Design variables: $(size(x0)[1])")
+        println("wind speed: $(mean(params.wind_resource.wind_speeds))")
+        println("TI: $(mean(params.wind_resource.ambient_tis))")
+        println("wind shear exp: $(params.wind_resource.wind_shear_model.shear_exponent)")
+        println("AEP init (base params): $aep_init_base")
+        quit()
     end
+
     # report initial objective value
     aep_init = aep_wrapper(x0, params)[1]
     if verbose
         println("starting objective value: ", aep_init)
     end
 
+    # add initial turbine location to plot
     if plotresults
-        plot(0,0)
-        # add initial turbine location to plot
+        fig, axlayout = plt.subplots(1)
+        axlayout.plot(0,0)
         for i = 1:length(turbine_x)
-            plt.gcf().gca().add_artist(plt.Circle((turbine_x[i],turbine_y[i]), rotor_diameter[1]/2.0, fill=false,color="C0"))
+            axlayout.add_artist(plt.Circle((turbine_x[i],turbine_y[i]), rotor_diameter[1]/2.0, fill=false,color="C0"))
         end
     end
 
@@ -206,21 +213,13 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
 
     # set general lower and upper bounds for constraints
     ng = Int(nturbines + (nturbines)*(nturbines - 1)/2)
-    # println("ng: ", ng)
     lg = [-Inf*ones(Int((nturbines)*(nturbines - 1)/2)); -Inf*ones(nturbines)]
     if verbose
         println(minimum(lg), maximum(lg))
     end
-    # quit()
     ug = [zeros(Int((nturbines)*(nturbines - 1)/2)); zeros(nturbines)]
-    # println("ug: ", minimum(lg), maximum(ug))
-    # run and time optimization
-    # quit()
     
-
-    # println(length(x0))
-    # println(length(lg))
-    # loop through all wec values 
+    # initialize wec values and storage containers
     wec_values = [3.0, 2.6, 2.2, 1.8, 1.4, 1.0, 1.0] 
     optaep = []
     optx = []
@@ -232,7 +231,7 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
     else
         xhistory = nothing
     end
-    lti= nothing
+    lti = nothing
     if wec
         t1 = time()
         for i = 1:length(wec_values)
@@ -339,26 +338,44 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
 
     if savehistory
         println("calculating aep history")
+
+        # initialize history plot and storage containers
+        fig, axhistory = plt.subplots(1)
         aep_history = []
-        println(length(xhistory))
-        @showprogress "recalculating aep for history..." for i = 1:15
-            print(".")
+        xlast = []
+        aeplast = nothing
+
+        # recalculate aep for each point in the design variable history
+        @showprogress "recalculating aep for history..." for i = 1:length(xhistory)
             x = xhistory[i]
-            println("x $x")
-            aeptemp = aep_wrapper(x, params_base)
+            if xlast != x                
+                aeptemp = (aep_wrapper(x, params_base)/obj_scale)*1E-9
+                xlast = deepcopy(x)
+                aeplast = deepcopy(aeptemp)
+            else
+                # if design variables have not changed, don't recalculate aep
+                aeptemp = deepcopy(aeplast)
+            end
             push!(aep_history, aeptemp)
         end
-        CSV.write("aephistory-wec-$case-$tuning-$layoutid.csv", aep_history)
-        plt.plot(aep_history)
-        plt.show()
-
+        # save recalculated aep history
+        if wec
+            CSV.write("aephistory-wec-$case-$tuning-$layoutid.csv", DataFrame(aep=aep_history))
+        else
+            CSV.write("aephistory-$case-$tuning-$layoutid.csv", DataFrame(aep=aep_history))
+        end
+        # plot recalculated aep history if desired
+        if plotresults
+            axhistory.plot(1:length(aep_history), aep_history)
+            axhistory.set(xlabel="Iteration", ylabel="AEP (GWh)")
+            plt.show()
+        end
     end
-
-    
 
     if verbose
         println("xopt ", xopt)
     end
+
     aep_final = aep_wrapper(xopt, params)
 
     aep_final_base = aep_wrapper([copy(turbine_x);copy(turbine_y)], params_base)
@@ -381,18 +398,19 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
     end
 
     if plotresults
+        
         # add final turbine locations to plot
         for i = 1:length(turbine_x)
-            plt.gcf().gca().add_artist(plt.Circle((turbine_x[i],turbine_y[i]), rotor_diameter[1]/2.0, fill=false,color="C1", linestyle="--")) 
+            axlayout.add_artist(plt.Circle((turbine_x[i],turbine_y[i]), rotor_diameter[1]/2.0, fill=false,color="C1", linestyle="--")) 
         end
         
         # add wind farm boundary to plot
-        plt.gcf().gca().add_artist(plt.Circle((boundary_center[1],boundary_center[2]), boundary_radius, fill=false,color="C2"))
+        axlayout.add_artist(plt.Circle((boundary_center[1],boundary_center[2]), boundary_radius, fill=false,color="C2"))
     
         # set up and show plot
-        axis("square")
-        xlim(-boundary_radius-200,boundary_radius+200)
-        ylim(-boundary_radius-200,boundary_radius+200)
+        axlayout.axis("square")
+        axlayout.set_xlim(-boundary_radius-200,boundary_radius+200)
+        axlayout.set_ylim(-boundary_radius-200,boundary_radius+200)
         plt.show()
     end
 
