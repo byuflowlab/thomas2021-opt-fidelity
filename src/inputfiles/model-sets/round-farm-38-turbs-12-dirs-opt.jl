@@ -4,12 +4,17 @@ using Statistics
 function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layoutid=1, nrotorpoints=1, alpha=0)
     # set initial turbine x and y locations
     diam = 126.4
-    data = readdlm("../inputfiles/farms/layout_38turb_round.txt",  ' ', skipstart=1)
+    if layoutid == 1
+        data = readdlm("../inputfiles/farms/startinglayouts/nTurbs38_spacing5.0_layout_1.txt",',', skipstart=1)
+    else
+        data = readdlm("../inputfiles/farms/startinglayouts/nTurbs38_spacing3.0_layout_$layoutid.txt",  ',', skipstart=1)
+    end
+
     turbine_x = data[1:nturbines, 1].*diam
     turbine_y = data[1:nturbines, 2].*diam
 
-    turbine_x = turbine_x .- turbine_x[1]
-    turbine_y = turbine_y .- turbine_y[1]
+    # turbine_x = turbine_x .- turbine_x[1]
+    # turbine_y = turbine_y .- turbine_y[1]
 
     # set turbine base heights
     turbine_z = zeros(nturbines) .+ 0.0
@@ -53,7 +58,6 @@ function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layouti
         shearexponent = 0.084 
     end
     
-
     # load power and thrust curves
     cpctdata = readdlm("../inputfiles/turbines/nrel-5mw/NREL5MWCPCT.txt", skipstart=1)
     velpoints = cpctdata[:,1]

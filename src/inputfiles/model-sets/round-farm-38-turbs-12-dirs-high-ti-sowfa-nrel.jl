@@ -42,7 +42,6 @@ function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layouti
     windspeeds = zeros(nstates) .+ mean(tunedwindspeeds) #tunedwindspeeds  #zeros(nstates) .+ mean(tunedwindspeeds) #zeros(length(winddirections)) .+ 7.99 # winddata[:,2]
     windprobabilities = winddata[:,3]
     
-
     air_density = 1.225  # kg/m^3 (from Jen)
 
     tunedti = windandtidata[:,3]

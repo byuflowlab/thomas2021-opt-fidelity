@@ -703,7 +703,6 @@ function horns_rev_direction_verification_figure(colors, fontsize; showfigs=fals
     end
 end
 
-
 function plot_circle(cx,cy,R,color,ax;fill=false,alpha=1.0,linestyle="-",linewidth=1,label="nolabel")
     N = 1000
     x = zeros(N)

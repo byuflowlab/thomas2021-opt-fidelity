@@ -24,16 +24,19 @@ function print_base_layouts()
     # display(p)
 end
 
-function print_optimized_layouts()
-    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-low-ti.jl")
-    df = DataFrame(CSV.File("../202107012007-optimization/optresultseasy.csv"))
+function print_optimized_layouts(;df=nothing, outfile="optlayout", diam=126.4)
+    if df === nothing
+        include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-low-ti.jl")
+        df = DataFrame(CSV.File("../202107012007-optimization/optresultseasy.csv"))
+        outfile = "round_38_turbines_opt.xlsx"
+    end
     # println(df.x[end][1])
     turbine_x = df.x
     turbine_y = df.y
-    rotor_diameter = zeros(length(turbine_x)) .+ 126.4
+    println(typeof(df.x))
+    rotor_diameter = zeros(length(turbine_x)) .+ diam
     center = [2500.0, 2500.0]
     center_turbine_locations!(turbine_x, turbine_y, center)
-    outfile = "round_38_turbines_opt.xlsx"
     ff.print_layout_in_cartesian_frame_excel(turbine_x, turbine_y, rotor_diameter, winddirections, outfile, center=center, round_locations=true, plot_layouts=true)
     
 end

@@ -7,6 +7,7 @@ using DataFrames
 using CSV
 # using Distributed
 using ProgressMeter
+using StatsBase
 
 # import model set with wind farm and related details
 include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-opt.jl")
@@ -22,6 +23,7 @@ mutable struct params_struct{}
     boundary_center
     boundary_radius
     obj_scale
+    con_scale_boundary
     xyscale
     hub_height
     turbine_yaw
@@ -35,11 +37,24 @@ mutable struct params_struct{}
     power_models
 end
 
+function get_sample_size()
+    mean = 13.280
+    std = 0.341
+    delta = 0.01
+    alpha = 0.05 
+    beta = 0.05
+    z = zscore(2.0)
+    println(z)
+    n = z*std/del
+    return n
+end
+
 # set up boundary constraint wrapper function
 function boundary_wrapper(x, params)
     # include relevant globals
     boundary_center = params.boundary_center
     boundary_radius = params.boundary_radius
+    con_scale_boundary = params.con_scale_boundary
 
     # find the number of turbines
     nturbines = Int(length(x)/2)
@@ -49,7 +64,7 @@ function boundary_wrapper(x, params)
     turbine_y = x[nturbines+1:end]
 
     # get and return boundary distances
-    return ff.circle_boundary(boundary_center, boundary_radius, turbine_x, turbine_y)
+    return ff.circle_boundary(boundary_center, boundary_radius, turbine_x, turbine_y).*con_scale_boundary
 end
 
 # set up spacing constraint wrapper function
@@ -147,7 +162,7 @@ function set_up_base_params(params; nrotorpoints=100, alpha=0)
 
 end
 
-function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotresults=false, verbose=true, wec=true, nrotorpoints=1, alpha=0, savehistory=false)
+function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotresults=false, verbose=true, wec=true, nrotorpoints=1, alpha=0, savehistory=false, optimize=true, outdir="./")
 
     # get wind farm setup
     diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, cut_in_speed, 
@@ -161,7 +176,8 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
     nturbines = length(turbine_x)
 
     # scale objective to be between 0 and 1
-    obj_scale = 1E-7 #1E-11
+    obj_scale = 1E-9 #1E-11
+    con_scale_boundary = 1E-4
     xyscale = 1 #1E4
 
     # set wind farm boundary parameters
@@ -172,15 +188,15 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
     end
 
     params = params_struct(model_set, rotor_points_y, rotor_points_z, turbine_z, ambient_ti, 
-        rotor_diameter, boundary_center, boundary_radius, obj_scale, xyscale, hub_height, turbine_yaw, 
+        rotor_diameter, boundary_center, boundary_radius, obj_scale, con_scale_boundary, xyscale, hub_height, turbine_yaw, 
         ct_models, generator_efficiency, cut_in_speed, cut_out_speed, rated_speed, rated_power, 
         wind_resource, power_models)
-    
-    params_base = set_up_base_params(params, alpha=alpha, nrotorpoints=100)
-    aep_init_base = aep_wrapper([copy(turbine_x);copy(turbine_y)], params_base)
 
     # initialize design variable array
     x0 = [copy(turbine_x);copy(turbine_y)]
+    
+    params_base = set_up_base_params(params, alpha=alpha, nrotorpoints=100)
+    aep_init_base = aep_wrapper(x0, params_base)[1]
 
     # print stuff if desired
     if verbose
@@ -189,7 +205,6 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
         println("TI: $(mean(params.wind_resource.ambient_tis))")
         println("wind shear exp: $(params.wind_resource.wind_shear_model.shear_exponent)")
         println("AEP init (base params): $aep_init_base")
-        quit()
     end
 
     # report initial objective value
@@ -205,6 +220,20 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
         for i = 1:length(turbine_x)
             axlayout.add_artist(plt.Circle((turbine_x[i],turbine_y[i]), rotor_diameter[1]/2.0, fill=false,color="C0"))
         end
+        # add wind farm boundary to plot
+        axlayout.add_artist(plt.Circle((boundary_center[1],boundary_center[2]), boundary_radius, fill=false,color="C2"))
+    
+        # set up plot formatting
+        axlayout.axis("square")
+        axlayout.set_xlim(-boundary_radius-200,boundary_radius+200)
+        axlayout.set_ylim(-boundary_radius-200,boundary_radius+200)
+    end
+
+    if !optimize 
+        if plotresults
+            plt.show()
+        end
+        return 
     end
 
     # set general lower and upper bounds for design variables
@@ -239,18 +268,18 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
             if i == length(wec_values)
                 model_set_local = model_set
                 lti = true
-                convtol = 1E-3
+                convtol = 1E-4
             else
                 local_ti_model_local = ff.LocalTIModelNoLocalTI()
                 model_set_local = ff.WindFarmModelSet(model_set.wake_deficit_model, model_set.wake_deflection_model, model_set.wake_combination_model, local_ti_model_local)
                 model_set_local.wake_deficit_model.wec_factor[1] = wec_values[i]
                 lti = false
-                convtol = 1E-2
+                convtol = 1E-3
             end
 
             # set params 
             params = params_struct(model_set_local, rotor_points_y, rotor_points_z, turbine_z, ambient_ti, 
-                    rotor_diameter, boundary_center, boundary_radius, obj_scale, xyscale, hub_height, turbine_yaw, 
+                    rotor_diameter, boundary_center, boundary_radius, obj_scale, con_scale_boundary, xyscale, hub_height, turbine_yaw, 
                     ct_models, generator_efficiency, cut_in_speed, cut_out_speed, rated_speed, rated_power, 
                     wind_resource, power_models)
 
@@ -260,8 +289,8 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
                 "Verify level" => -1,
                 "Major optimality tolerance" => convtol,
                 # "Major iterations limit" => 1E0,
-                "Summary file" => "snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out",
-                "Print file" => "snopt-print-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out"
+                "Summary file" => outdir*"snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out",
+                "Print file" => outdir*"snopt-print-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out"
             )
 
             # initialize solver
@@ -297,81 +326,123 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
         clk = t2-t1
 
         df = DataFrame(wec=wec_values, aep=optaep, xs=startx, ys=starty, x=optx, y=opty)
-        CSV.write("optresults-wec-$case-$tuning-$layoutid.csv", df)
+        CSV.write(outdir*"optresults-wec-$case-$tuning-$layoutid.csv", df)
         df2 = DataFrame(x=optx[end], y=opty[end])
-        CSV.write("optresultseasy-wec-$case-$tuning-$layoutid.csv", df2)
+        CSV.write(outdir*"optresultseasy-wec-$case-$tuning-$layoutid.csv", df2)
         
     else
-        # set SNOPT options
-        snopt_opt = Dict(
-            "Derivative option" => 1,
-            "Verify level" => -1,
-            "Major optimality tolerance" => 1e-2,
-            # "Major iterations limit" => 1E0,
-            "Summary file" => "snopt-summary-$(case)-layout-$(layoutid).out",
-            "Print file" => "snopt-print-$(case)-layout-$(layoutid).out"
-        )
-
-        # initialize solver
-        solver = SNOPT(options=snopt_opt)
-
-        # initialize SNOW options
-        options = Options(;solver, derivatives=ForwardAD())
-
-        # params.model_set.wake_deficit_model.wec_factor[1] = 1.0
-
-        # generate wrapper function surrogate
-        obj_func_no_wec!(g, x) = wind_farm_opt!(g, x, params, xhistory=xhistory)
-
-        # optimize
+        xopt = nothing
+        info = nothing
+        out = nothing
         t1 = time()
-        xopt, fopt, info, out = minimize(obj_func_no_wec!, x0, ng, lx, ux, lg, ug, options)
+        for i = 1:2
+            if lti !== nothing
+                model_set_local = model_set
+                lti = true
+                convtol = 1E-4
+            else
+                local_ti_model_local = ff.LocalTIModelNoLocalTI()
+                model_set_local = ff.WindFarmModelSet(model_set.wake_deficit_model, model_set.wake_deflection_model, model_set.wake_combination_model, local_ti_model_local)
+                lti = false
+                convtol = 1E-3
+            end
+
+            # set params 
+            params = params_struct(model_set_local, rotor_points_y, rotor_points_z, turbine_z, ambient_ti, 
+                    rotor_diameter, boundary_center, boundary_radius, obj_scale, con_scale_boundary, xyscale, hub_height, turbine_yaw, 
+                    ct_models, generator_efficiency, cut_in_speed, cut_out_speed, rated_speed, rated_power, 
+                    wind_resource, power_models)
+
+            # set SNOPT options
+            snopt_opt = Dict(
+                "Derivative option" => 1,
+                "Verify level" => -1,
+                "Major optimality tolerance" => convtol,
+                # "Major iterations limit" => 1E0,
+                "Summary file" => outdir*"snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti).out",
+                "Print file" => outdir*"snopt-print-$(case)-layout-$(layoutid)-lti-$(lti).out"
+            )
+
+            # initialize solver
+            solver = SNOPT(options=snopt_opt)
+
+            # initialize SNOW options
+            options = Options(;solver, derivatives=ForwardAD())
+
+            # params.model_set.wake_deficit_model.wec_factor[1] = 1.0
+
+            # generate wrapper function surrogate
+            obj_func_no_wec!(g, x) = wind_farm_opt!(g, x, params, xhistory=xhistory)
+
+            # optimize
+            xopt, fopt, info, out = minimize(obj_func_no_wec!, x0, ng, lx, ux, lg, ug, options)
+            
+            # extract final turbine locations
+            turbine_x = copy(xopt[1:nturbines])
+            turbine_y = copy(xopt[nturbines+1:end])
+
+            # add results to results arrays
+            push!(optaep, -fopt/obj_scale)
+            push!(optx, turbine_x)
+            push!(opty, turbine_y)
+        end
         t2 = time()
         clk = t2-t1
 
-        # extract final turbine locations
-        turbine_x = copy(xopt[1:nturbines])
-        turbine_y = copy(xopt[nturbines+1:end])
-
-        
+        # df = DataFrame(aep=optaep, xs=startx, ys=starty, x=optx, y=opty)
+        # CSV.write(outdir*"optresults-$case-$tuning-$layoutid.csv", df)
+        # df2 = DataFrame(x=optx[end], y=opty[end])
+        # CSV.write(outdir*"optresultseasy-$case-$tuning-$layoutid.csv", df2)
     end
 
-    if savehistory
-        println("calculating aep history")
+    if layoutid == 1
+        if savehistory
+            println("calculating aep history")
 
-        # initialize history plot and storage containers
-        fig, axhistory = plt.subplots(1)
-        aep_history = []
-        xlast = []
-        aeplast = nothing
+            # initialize history plot and storage containers
+            fig, axhistory = plt.subplots(1)
+            aep_history = []
+            xlast = []
+            aeplast = nothing
 
-        # recalculate aep for each point in the design variable history
-        @showprogress "recalculating aep for history..." for i = 1:length(xhistory)
-            x = xhistory[i]
-            if xlast != x                
-                aeptemp = (aep_wrapper(x, params_base)/obj_scale)*1E-9
-                xlast = deepcopy(x)
-                aeplast = deepcopy(aeptemp)
-            else
-                # if design variables have not changed, don't recalculate aep
-                aeptemp = deepcopy(aeplast)
+            # recalculate aep for each point in the design variable history
+            @showprogress "recalculating aep for history..." for i = 1:length(xhistory)
+                x = xhistory[i]
+                if xlast != x                
+                    aeptemp = (aep_wrapper(x, params_base)/obj_scale)*1E-9
+                    xlast = deepcopy(x)
+                    aeplast = deepcopy(aeptemp)
+                else
+                    # if design variables have not changed, don't recalculate aep
+                    aeptemp = deepcopy(aeplast)
+                end
+                push!(aep_history, aeptemp)
             end
-            push!(aep_history, aeptemp)
-        end
-        # save recalculated aep history
-        if wec
-            CSV.write("aephistory-wec-$case-$tuning-$layoutid.csv", DataFrame(aep=aep_history))
-        else
-            CSV.write("aephistory-$case-$tuning-$layoutid.csv", DataFrame(aep=aep_history))
-        end
-        # plot recalculated aep history if desired
-        if plotresults
-            axhistory.plot(1:length(aep_history), aep_history)
-            axhistory.set(xlabel="Iteration", ylabel="AEP (GWh)")
-            plt.show()
+            # save recalculated aep history
+            if wec
+                CSV.write(outdir*"aephistory-wec-$case-$tuning-$layoutid.csv", DataFrame(aep=aep_history))
+            else
+                CSV.write(outdir*"aephistory-$case-$tuning-$layoutid.csv", DataFrame(aep=aep_history))
+            end
+            # plot recalculated aep history if desired
+            if plotresults
+                axhistory.plot(1:length(aep_history), aep_history)
+                axhistory.set(xlabel="Iteration", ylabel="AEP (GWh)")
+                plt.show()
+            end
         end
     end
 
+    if wec && savehistory
+        CSV.write(outdir*"loc-history-wec-$case-$tuning-$layoutid.csv", DataFrame(loc=xhistory))
+    elseif savehistory
+        CSV.write(outdir*"loc-history-$case-$tuning-$layoutid.csv", DataFrame(loc=xhistory))
+    end
+    if savehistory
+        fcalls = size(xhistory)[1]
+    else
+        fcalls = nothing
+    end
     if verbose
         println("xopt ", xopt)
     end
@@ -404,15 +475,38 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
             axlayout.add_artist(plt.Circle((turbine_x[i],turbine_y[i]), rotor_diameter[1]/2.0, fill=false,color="C1", linestyle="--")) 
         end
         
-        # add wind farm boundary to plot
-        axlayout.add_artist(plt.Circle((boundary_center[1],boundary_center[2]), boundary_radius, fill=false,color="C2"))
-    
-        # set up and show plot
-        axlayout.axis("square")
-        axlayout.set_xlim(-boundary_radius-200,boundary_radius+200)
-        axlayout.set_ylim(-boundary_radius-200,boundary_radius+200)
         plt.show()
     end
 
-    return xopt, fopt, info, out
+    return xopt, aep_init, aep_final, aep_init_base, aep_final_base, info, out, clk, fcalls
+end
+
+function run_optimization_series(nruns, case, tuning, outdir="./"; wec=true)
+
+    xoptdata = []
+    aepinitdata = []
+    aepfinaldata = []
+    aepinitbasedata = []
+    aepfinalbasedata = []
+    infodata = []
+    outdata = []
+    timedata = []
+    fcalldata = []
+
+    for i = 1:nruns
+        println("running optimization $i")
+        xopt, aepi, aepf, aepib, aepfb, info, out, clk, fcalls = run_optimization(i; case=case, tuning=tuning, plotresults=false, verbose=false, wec=wec, nrotorpoints=1, alpha=0, savehistory=true, optimize=true, outdir=outdir)
+        push!(xoptdata, xopt)
+        push!(aepinitdata, aepi)
+        push!(aepfinaldata, aepf)
+        push!(aepinitbasedata, aepib)
+        push!(aepfinalbasedata, aepfb)
+        push!(infodata, info)
+        push!(outdata, out)
+        push!(timedata, clk)
+        push!(fcalldata, fcalls)
+        df = DataFrame(xopt=xoptdata, aepi=aepinitdata, aepf=aepfinaldata, aepib=aepinitbasedata, aepfb=aepfinalbasedata, info=infodata, out=outdata, time=timedata, fcalls=fcalldata)
+        CSV.write(outdir*"opt-overall-results-$case-$tuning.csv", df)
+    end
+
 end
