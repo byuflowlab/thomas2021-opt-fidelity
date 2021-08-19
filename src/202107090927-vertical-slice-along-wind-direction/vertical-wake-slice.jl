@@ -29,7 +29,7 @@ function vertical_slice(;nearwake=true)
     # run flowfarm 
     ffvelocities = ff.calculate_flow_field(xrange, yrange, zrange,
     model_set, turbine_x, turbine_y, turbine_z, turbine_yaw,
-    rotor_diameter, hub_height, sorted_turbine_index, ct_models, rotor_sample_points_y, rotor_sample_points_z,
+    rotor_diameter, hub_height, ct_models, rotor_sample_points_y, rotor_sample_points_z,
     wind_resource, shearfirst=false)  
     
     println(minimum(ffvelocities))
@@ -46,6 +46,39 @@ function vertical_slice(;nearwake=true)
     # plt.contourf(xg, zg, ffvelocities[:,1,:], levels)
     # plt.show()
 
+
+end
+
+function horizontal(;nearwake=true)
+    
+    # define how many points should be in the flow field
+    xres = 100
+    yres = 100
+    zres = 1
+    boundary_radius = 100.0
+    # define flow field domain
+    maxy = boundary_radius
+    miny = -boundary_radius
+    maxx = boundary_radius
+    minx = -boundary_radius
+
+    # set up point grid for flow field
+    xrange = minx:(maxx-minx)/xres:maxx
+    yrange = miny:(maxy-miny)/yres:maxy
+    zrange = hub_height[1]
+
+    # run flowfarm 
+    ffvelocities = ff.calculate_flow_field(xrange, yrange, zrange,
+        model_set, turbine_x, turbine_y, turbine_z, turbine_yaw,
+        rotor_diameter, hub_height, ct_models, rotor_sample_points_y, rotor_sample_points_z,
+        wind_resource, wind_farm_state_id=1)
+    println(size(ffvelocities))
+    # visualize 
+    xg, yg = meshgrid(collect(xrange), collect(yrange))
+    fig, ax = plt.subplots(1)
+    println(size(ffvelocities))
+    plt.contourf(xg, yg, ffvelocities[1,:,:])
+    plt.savefig("flowfield.png")
 
 end
 

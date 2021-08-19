@@ -1,13 +1,13 @@
 import FLOWFarm; const ff = FLOWFarm
 using Statistics
 
-function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layoutid=1, nrotorpoints=1, alpha=0)
+function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layoutid=1, nrotorpoints=1, alpha=0, layoutdir="../inputfiles/farms/startinglayouts/individual/")
     # set initial turbine x and y locations
     diam = 126.4
     if layoutid == 1
-        data = readdlm("../inputfiles/farms/startinglayouts/nTurbs38_spacing5.0_layout_1.txt",',', skipstart=1)
+        data = readdlm("$(layoutdir)nTurbs38_spacing5.0_layout_1.txt",',', skipstart=1)
     else
-        data = readdlm("../inputfiles/farms/startinglayouts/nTurbs38_spacing3.0_layout_$layoutid.txt",  ',', skipstart=1)
+        data = readdlm("$(layoutdir)nTurbs38_spacing3.0_layout_$layoutid.txt",  ',', skipstart=1)
     end
 
     turbine_x = data[1:nturbines, 1].*diam

@@ -14,11 +14,14 @@ diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, 
     ct_models, wind_shear_model, sorted_turbine_index, wind_resource, wakedeficitmodel, 
     wakedeflectionmodel, wakecombinationmodel, localtimodel, model_set = wind_farm_setup(38)
 
-function load_results(case, tuning; wec=true)
+function load_results(case, tuning; wec=true, dir="")
+    if dir==""
+        dir = "opt-$case"
+    end
     if wec 
-        datafilename = "/Users/jaredthomas/OneDrive - BYU/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/opt-$case-wec/opt-overall-results-$case-$tuning.csv"
+        datafilename = "/Users/jaredthomas/OneDrive - BYU/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/$dir-wec/opt-overall-results-$case-$tuning.csv"
     else
-        datafilename = "/Users/jaredthomas/OneDrive - BYU/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/opt-$case-no-wec/opt-overall-results-$case-$tuning.csv"
+        datafilename = "/Users/jaredthomas/OneDrive - BYU/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/$dir-no-wec/opt-overall-results-$case-$tuning.csv"
     end
     df = DataFrame(CSV.File(datafilename, header=true))
 

@@ -162,7 +162,7 @@ function set_up_base_params(params; nrotorpoints=100, alpha=0)
 
 end
 
-function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotresults=false, verbose=true, wec=true, nrotorpoints=1, alpha=0, savehistory=false, optimize=true, outdir="./")
+function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotresults=false, verbose=true, wec=true, nrotorpoints=1, alpha=0, savehistory=false, optimize=true, outdir="./", layoutdir="../inputfiles/farms/startinglayouts/individual/")
 
     # get wind farm setup
     diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, cut_in_speed, 
@@ -170,7 +170,7 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
     rotor_points_y, rotor_points_z, winddirections, windspeeds, windprobabilities, 
     air_density, ambient_ti, shearexponent, ambient_tis, measurementheight, power_models, 
     ct_models, wind_shear_model, sorted_turbine_index, wind_resource, wakedeficitmodel, 
-    wakedeflectionmodel, wakecombinationmodel, localtimodel, model_set = wind_farm_setup(38, case=case, tuning=tuning, layoutid=layoutid, nrotorpoints=nrotorpoints, alpha=alpha)
+    wakedeflectionmodel, wakecombinationmodel, localtimodel, model_set = wind_farm_setup(38, case=case, tuning=tuning, layoutid=layoutid, nrotorpoints=nrotorpoints, alpha=alpha, layoutdir=layoutdir)
 
     # get number of turbines 
     nturbines = length(turbine_x)
@@ -400,7 +400,9 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
             println("calculating aep history")
 
             # initialize history plot and storage containers
-            fig, axhistory = plt.subplots(1)
+            if plotresults
+                fig, axhistory = plt.subplots(1)
+            end
             aep_history = []
             xlast = []
             aeplast = nothing
@@ -481,7 +483,9 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
     return xopt, aep_init, aep_final, aep_init_base, aep_final_base, info, out, clk, fcalls
 end
 
-function run_optimization_series(nruns, case, tuning, outdir="./"; wec=true)
+function run_optimization_series(nruns, case, tuning, outdir="./", layoutgen="individual"; wec=true)
+
+    layoutdir="../inputfiles/farms/startinglayouts/$layoutgen/"
 
     xoptdata = []
     aepinitdata = []
@@ -495,7 +499,7 @@ function run_optimization_series(nruns, case, tuning, outdir="./"; wec=true)
 
     for i = 1:nruns
         println("running optimization $i")
-        xopt, aepi, aepf, aepib, aepfb, info, out, clk, fcalls = run_optimization(i; case=case, tuning=tuning, plotresults=false, verbose=false, wec=wec, nrotorpoints=1, alpha=0, savehistory=true, optimize=true, outdir=outdir)
+        xopt, aepi, aepf, aepib, aepfb, info, out, clk, fcalls = run_optimization(i; case=case, tuning=tuning, plotresults=false, verbose=false, wec=wec, nrotorpoints=1, alpha=0, savehistory=true, optimize=true, outdir=outdir, layoutdir=layoutdir)
         push!(xoptdata, xopt)
         push!(aepinitdata, aepi)
         push!(aepfinaldata, aepf)
