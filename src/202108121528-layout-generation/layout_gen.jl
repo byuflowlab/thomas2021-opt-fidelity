@@ -7,8 +7,8 @@ function generate_layouts(nlayouts; startingindex=1, method="individual")
     # specify directory 
     output_directory = "../inputfiles/farms/startinglayouts/$(method)2/"
     println(output_directory)
-    show = true 
-    save = false
+    show = false 
+    save = true
 
     # specify parameters 
     rotor_diameter = 126.4
