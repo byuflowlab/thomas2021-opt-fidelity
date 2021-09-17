@@ -7,10 +7,20 @@ using VectorizedRoutines.Matlab
 
 # load flowfarm inputs etc 
 # include("../inputfiles/model-sets/bastankhah2014-single-turb-wind-tunnel-case.jl")
-include("../inputfiles/model-sets/model_set_0_single_turbine.jl")
+# include("../inputfiles/model-sets/model_set_0_single_turbine.jl")
+include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-opt.jl")
 
 function vertical_slice(;nearwake=true)
+
+    diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, cut_in_speed, 
+    cut_out_speed, rated_speed, rated_power, generator_efficiency, nrotorpoints, 
+    rotor_sample_points_y, rotor_sample_points_z, winddirections, windspeeds, windprobabilities, 
+    air_density, ambient_ti, shearexponent, ambient_tis, measurementheight, power_models, 
+    ct_models, wind_shear_model, sorted_turbine_index, wind_resource, wakedeficitmodel, 
+    wakedeflectionmodel, wakecombinationmodel, localtimodel, model_set = wind_farm_setup(1, case="high-ti", nrotorpoints=100)
     
+    wind_resource.wind_directions[1] = 3*pi/2
+    println(turbine_x, turbine_y)
     # define how many points should be in the flow field
     xres = 1000
     zres = 500
@@ -30,7 +40,7 @@ function vertical_slice(;nearwake=true)
     ffvelocities = ff.calculate_flow_field(xrange, yrange, zrange,
     model_set, turbine_x, turbine_y, turbine_z, turbine_yaw,
     rotor_diameter, hub_height, ct_models, rotor_sample_points_y, rotor_sample_points_z,
-    wind_resource, shearfirst=false)  
+    wind_resource, shearfirst=true)  
     
     println(minimum(ffvelocities))
     
@@ -41,15 +51,26 @@ function vertical_slice(;nearwake=true)
     writedlm("../../image-generation/image-data/verification/vertical-slice-interpolated.txt", ffvelocities[:, 1, :])
 
     # visualize 
-    # xg, zg = meshgrid(collect(xrange), collect(zrange))
-    # levels = 1.5:0.1:2.4
-    # plt.contourf(xg, zg, ffvelocities[:,1,:], levels)
-    # plt.show()
+    xg, zg = meshgrid(collect(xrange), collect(zrange))
+    levels = 0:0.5:10
+
+    println(size(ffvelocities[:,1,:]))
+    plt.contourf(xg, zg, ffvelocities[:,1,:], levels)
+    plt.show()
 
 
 end
 
 function horizontal(;nearwake=true)
+
+    diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, cut_in_speed, 
+    cut_out_speed, rated_speed, rated_power, generator_efficiency, nrotorpoints, 
+    rotor_sample_points_y, rotor_sample_points_z, winddirections, windspeeds, windprobabilities, 
+    air_density, ambient_ti, shearexponent, ambient_tis, measurementheight, power_models, 
+    ct_models, wind_shear_model, sorted_turbine_index, wind_resource, wakedeficitmodel, 
+    wakedeflectionmodel, wakecombinationmodel, localtimodel, model_set = wind_farm_setup(1, case="high-ti", nrotorpoints=100)
+    
+    wind_resource.wind_directions[1] = 3*pi/2
     
     # define how many points should be in the flow field
     xres = 100

@@ -973,10 +973,13 @@ function windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
 
 end
 
-function vertical_slice(colors; savefigs=false, showfigs=false, version="interpolated")
+function vertical_slice(colors; savefigs=false, showfigs=false, fontsize=10)
+
+    # for the high-ti case 
 
     # set input values 
     diam = 126.4
+    hub_height = 90.0
 
     # load flowfield velocities
     ffvelocities = readdlm("image-data/verification/vertical-slice-interpolated.txt")
@@ -999,41 +1002,64 @@ function vertical_slice(colors; savefigs=false, showfigs=false, version="interpo
 
     # set contour levels
     # levels = 1:8.2
-    levels = 0:0.5:9
+    levels = 0:0.5:10
 
     # get colormap 
     cmap = custum_color_map(idx=[3,2])
     
     # generate contour plot
-    fig, ax = plt.subplots(figsize=(7,2))
+    fig, ax = plt.subplots(2, figsize=(6,4))
     
+    ffvelocities[ffvelocities .< 0] .= 0
+    cs = ax[1].contourf(xg./diam, zg./diam, ffvelocities, levels, cmap=cmap)
+    ax[2].contourf(xg./diam, zg./diam, ffvelocities, levels, cmap=cmap)
     
-    cs = ax.contourf(xg./diam, zg./diam, ffvelocities, levels, cmap=cmap)
+    # cover up interpolated region for non-interpolated figure
+    # r = plt.matplotlib.patches.Rectangle((0,0),424.39110240363897/diam,2, color="w")
+    r = plt.matplotlib.patches.Rectangle((0,0),305.94115534342194/diam,2, color="w")
+    ax[1].add_patch(r)
 
-    if version == "original"
-        r = plt.matplotlib.patches.Rectangle((0,0),725.4980208718556/diam,2, color="w")
-        ax.add_patch(r)
-    end
-
-    cbar = ax.figure.colorbar(cs, ax=ax, label="Wind Speed (m/s)", orientation="vertical")
-    # cbar.ax.set_xlabel("Wind Speed (m/s)", rotation=270)
+    position=fig.add_axes([0.8,0.2,0.03,0.725])
+    cbar = fig.colorbar(cs, cax=position, ax=[ax[1],ax[2]], label="Wind Speed (m/s)", use_gridspec=true)
     
-    println(minimum(ffvelocities))
-    println(cs.levels)
-    # ax.clabel(cs, 4:8, inline=1) 
-
     # add turbine 
-    radius = diam/2
-    ax.plot([0.0,0.0], [90-radius, 90+radius]./diam, linewidth=5, color="k")
+    radius = 0.5
+    thub = hub_height/diam
+    hd = 0.1
+    chord = 0.2
+    nacellewidth = 3*chord
+    nacelleheigt = hd
+    towerdtop = 3.87/diam 
+    towerdbot = 6.0/diam
+    overhang = 5.0/diam
+
+    ff.add_turbine!(ax[1], view="side", hubdiameter=0.1, hubheight=hub_height/diam, radius=0.5, chord=0.2, nacellewidth=0.6, nacelleheight=0.1, towerbottomdiam=6.0/diam, towertopdiam=3.87/diam, overhang=5.0/diam, s=5)
+
+    ff.add_turbine!(ax[2], view="side", hubdiameter=0.1, hubheight=hub_height/diam, radius=0.5, chord=0.2, nacellewidth=0.6, nacelleheight=0.1, towerbottomdiam=6.0/diam, towertopdiam=3.87/diam, overhang=5.0/diam, s=5)
+
+    # add labels
+    # ax[1].set_title("(a)", fontsize=fontsize, y=0)#text(0.5,-0, "(a)", horizontalalignment="center", fontsize=fontsize, transform=ax[1].transAxes)
+    # plt.annotate( "(b)", (0.5,-1), xycoords=fig.transFigure, horizontalalignment="center", fontsize=fontsize)
+    figt = plt.gcf()
+    xtxtloc = (xmin + (xmax-xmin)/2.0)/diam
+    
+    ax[1].text(xtxtloc,-1.,"(a)",horizontalalignment="center",fontsize=fontsize)
+    ax[2].text(xtxtloc,-1.,"(b)",horizontalalignment="center",fontsize=fontsize)
+
+    plt.subplots_adjust(top=1,bottom=0.2,right=0.92,left=0.12,hspace=0.5)
 
     # format figure 
-    ax.set(xticks=0:4:20, yticks=0:2)
-    ax.set(xlabel=L"$x/d_0$", ylabel=L"$z/d_0$")
+    ax[1].set(xticks=0:4:20, yticks=0:2)
+    ax[2].set(xticks=0:4:20, yticks=0:2)
+    ax[1].set(xlabel=L"$x/d_0$", ylabel=L"$z/d_0$")
+    ax[2].set(xlabel=L"$x/d_0$", ylabel=L"$z/d_0$")
 
-    plt.tight_layout()
+    plt.subplots_adjust(hspace=0.8)
+
+    plt.tight_layout(pad=0.5, rect=(0, 0, 0.75, 1))
 
     if savefigs
-        plt.savefig("images/vertical-slice-$version.pdf", transparent=true)
+        plt.savefig("images/vertical-slice.pdf", transparent=true)
     end
 
     # save figure
@@ -1060,7 +1086,7 @@ function generate_images_for_publication()
     # layout(colors, fontsize)
     # opt_comparison_table()
     # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
-    turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="alldirections")
+    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="alldirections")
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="alldirections")
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="all")
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="all")
@@ -1072,6 +1098,6 @@ function generate_images_for_publication()
     # turbine_layouts(colors, case="low-ti-opt", showfigs=showfigs, savefigs=savefigs)
     # turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
 
-    # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
+    vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
     # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs, version = "original")
 end

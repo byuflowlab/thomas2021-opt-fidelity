@@ -38,10 +38,10 @@ function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layouti
     # load tuned wind speed and ambient ti data 
 
     windandtidata = readdlm("../202105181144-38-turb-tune-to-sowfa/tuned-parameters-$case-$tuning.csv", ',', skipstart=1)
-    tunedwindspeeds = windandtidata[:, 2].*0.0 .+ 8.055
+    tunedwindspeeds = windandtidata[:, 2]
     tunedti = windandtidata[:,3]
-    ambient_ti = mean(tunedti)*0.0 + 0.046
-
+    ambient_ti = mean(tunedti)
+    
     # set flow parameters
     winddata = readdlm("../inputfiles/wind/windrose_nantucket_12dir.txt", ' ', skipstart=1)
     winddirections = winddata[:,1].*pi./180.0

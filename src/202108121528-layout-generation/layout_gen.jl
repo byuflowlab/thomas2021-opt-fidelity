@@ -1,15 +1,13 @@
 using FLOWFarm; const ff = FLOWFarm
 using DelimitedFiles
 
-function generate_layouts(nlayouts; startingindex=1, method="individual")
+function generate_layouts(nlayouts; startingindex=1, method="individual", show=true, save=false)
 
     
     # specify directory 
-    output_directory = "../inputfiles/farms/startinglayouts/$(method)2/"
+    output_directory = "../inputfiles/farms/startinglayouts/$(method)/"
     println(output_directory)
-    show = false 
-    save = true
-
+    
     # specify parameters 
     rotor_diameter = 126.4
     farm_center = [0.0, 0.0]
