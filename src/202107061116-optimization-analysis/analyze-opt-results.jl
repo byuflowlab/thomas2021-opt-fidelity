@@ -5,7 +5,8 @@ using PrettyTables
 using Statistics
 
 include("../202105111413-SOWFA-comparison/202105111413-sowfa-round-farm-comparison.jl")
-include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-low-ti-alldirections.jl")
+# include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-low-ti-alldirections.jl")
+include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-opt.jl")
 
 diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, cut_in_speed, 
     cut_out_speed, rated_speed, rated_power, generator_efficiency, nrotorpoints, 
@@ -19,9 +20,9 @@ function load_results(case, tuning; wec=true, dir="")
         dir = "opt-$case"
     end
     if wec 
-        datafilename = "/Users/jaredthomas/OneDrive - BYU/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/$dir-wec/opt-overall-results-$case-$tuning.csv"
+        datafilename = "/Users/jaredthomas/OneDrive - Brigham Young University/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/$dir-wec/opt-overall-results-$case-$tuning.csv"
     else
-        datafilename = "/Users/jaredthomas/OneDrive - BYU/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/$dir-no-wec/opt-overall-results-$case-$tuning.csv"
+        datafilename = "/Users/jaredthomas/OneDrive - Brigham Young University/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/$dir-no-wec/opt-overall-results-$case-$tuning.csv"
     end
     df = DataFrame(CSV.File(datafilename, header=true))
 
@@ -165,53 +166,54 @@ function show_layout_results_by_id(df, idx, layoutdir, lspacing)
     println("Improvement Base: $(round(((aepo-aepb)/aepb)*100, digits=2))%")
     println("Improvement Start: $(round(((aepo-aepi)/aepi)*100, digits=2))%")
 
-
-
 end
 
-function find_max_layout(df, case, tuning; savelayout=false)
+function find_max_layout(df, case, tuning; savelayout=false, n="")
     idx = argmax(df.aepfb)
 
     println("max aep from run $idx with aep of $(df.aepfb[idx])")
     
     xopt = df.xopt[idx]
+    # remove punctuation (except periods)
+    xopt = replace.(xopt, [',','[',']']=>"")
+    # split into array of strings 
+    xopt = split(xopt)
+    # parse
+    xopt = parse.(Float64, xopt)
 
+    nturbines = Int(length(xopt)/2)
+
+    turbinex = xopt[1:nturbines]
+    turbiney = xopt[nturbines+1:end]
+
+    dfout = DataFrame(x=turbinex, y=turbiney)
     if savelayout
 
-        # remove punctuation (except periods)
-        xopt = replace.(xopt, [',','[',']']=>"")
-        # split into array of strings 
-        xopt = split(xopt)
-        # parse
-        xopt = parse.(Float64, xopt)
-
-        nturbines = Int(length(xopt)/2)
-
-        turbinex = xopt[1:nturbines]
-        turbiney = xopt[nturbines+1:end]
-
-        dfout = DataFrame(x=turbinex, y=turbiney)
-        
         include("../202106021113-layouts-for-nrel/base_layouts_for_nrel.jl")
 
         print_optimized_layouts(df=dfout, outfile="../202106021113-layouts-for-nrel/round-38-turbines-$(case)-$(tuning)-$idx-opt.xlsx", diam=126.4)
         
+        CSV.write("$case-$tuning-opt$(n)-layout$idx.csv", DataFrame(x=turbinex, y=turbiney))
     end
 end
 
-function calculate_results(nsamplepoints=100, case="low-ti", tuning="alldirections")
+function calculate_results(nsamplepoints=100, case="low-ti", tuning="alldirections", modelsetopt=false, df=nothing)
 
-    datafile = "../../image-generation/image-data/layouts/opt/optresultsmilestone.csv"
+    if modelsetopt
 
-    # extract data
-    df = DataFrame(CSV.File(datafile, datarow=2, header=false))
+    else
 
-    # name columns 
-    rename!(df,:Column1 => :x,:Column2 => :y)
+        datafile = "../../image-generation/image-data/layouts/opt/optresultsmilestone.csv"
 
-    turbine_powers_by_direction_ff = run_flow_farm(wind_farm_setup, x=df.x, y=df.y, use_local_ti=true, 
-    nsamplepoints=nsamplepoints, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, case=case)#ti=0.0456610699321765
+        # extract data
+        df = DataFrame(CSV.File(datafile, datarow=2, header=false))
 
+        # name columns 
+        rename!(df,:Column1 => :x,:Column2 => :y)
+
+        turbine_powers_by_direction_ff = run_flow_farm(wind_farm_setup, x=df.x, y=df.y, use_local_ti=true, 
+        nsamplepoints=nsamplepoints, alpha=0.0, verbose=false, windrose="nantucket", shearfirst=true, case=case)#ti=0.0456610699321765
+    end
     # save data 
     df = DataFrame(turbine_powers_by_direction_ff', :auto)
     CSV.write("turbine-power-ff-$(nsamplepoints)pts-$case-$tuning-opt.txt", df, header=string.(round.(winddirections.*180.0./pi, digits=0)))

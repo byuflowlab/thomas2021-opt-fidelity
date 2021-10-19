@@ -172,7 +172,7 @@ function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, ima
     plt.plot([minv,maxv], [hub_height, hub_height], color=colors[1], linestyle="-.")
 
     # add axis labels
-    plt.xlabel("Wind Speed (m/s)", fontsize=fontsize)
+    plt.xlabel(L"Wind speed (m s$^{-1}$)", fontsize=fontsize)
     plt.ylabel("Height (m)", fontsize=fontsize)
 
     # remove top and right spines 
@@ -261,19 +261,18 @@ function layout(colors, fontsize; showfigs=false, savefigs=false, image_director
     end
 end
 
-function opt_comparison_table()
-
+function opt_comparison_table(;case="high-ti", tuning="sowfa-nrel")
     # flowfarm base data 
-    basepowerfileff = "image-data/power/turbine-power-low-ti-ff-100pts.txt"
+    basepowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout1.txt"
 
     # sowfa base data
-    basepowerfilesowfa = "image-data/power/turbine-power-low-ti-les.txt"
+    basepowerfilesowfa = "image-data/power/turbine-power-$case-les.txt"
 
     # flowfarm opt data 
-    optpowerfileff = "image-data/power/turbine-power-low-ti-ff-100pts-opt.txt"
+    optpowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout83-opt4.txt"
 
     # sowfa opt data 
-    optpowerfilesowfa = "image-data/power/turbine-power-low-ti-les-opt.txt"
+    optpowerfilesowfa = "image-data/power/turbine-power-$case-les-opt4.txt"
 
     # windrose data 
     winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
@@ -345,16 +344,26 @@ function opt_comparison_table()
         oc = round(errordf.OC[i], digits=1)
         is = round(improvementsowfa[i], digits=1)
         iff = round(improvementff[i], digits=1)
-        
+
         println("\\multicolumn{1}{l}{\$$(Int(round(winddf.d[i], digits=0)))^{\\circ}\$} & &")
-        println("\\SI[per-mode=symbol]{$bs}{\\mega\\watt} &")
-        println("\\SI[per-mode=symbol]{$bf}{\\mega\\watt} &")
-        println("\\SI[per-mode=symbol]{$bc}{\\percent} & &")
-        println("\\SI[per-mode=symbol]{$os}{\\mega\\watt} &")
-        println("\\SI[per-mode=symbol]{$of}{\\mega\\watt} &")
-        println("\\SI[per-mode=symbol]{$oc}{\\percent} & &")
-        println("\\SI[per-mode=symbol]{$is}{\\percent} &")
-        println("\\SI[per-mode=symbol]{$iff}{\\percent} \\\\")
+        println("$bs MW &")
+        println("$bf MW &")
+        println("$bc \$\%\$ & &")
+        println("$os MW &")
+        println("$of MW &")
+        println("$oc \$\%\$ & &")
+        println("$is \$\%\$ &")
+        println("$iff \$\%\$ \\\\")
+        
+        # println("\\multicolumn{1}{l}{\$$(Int(round(winddf.d[i], digits=0)))^{\\circ}\$} & &")
+        # println("\\SI[per-mode=symbol]{$bs}{\\mega\\watt} &")
+        # println("\\SI[per-mode=symbol]{$bf}{\\mega\\watt} &")
+        # println("\\SI[per-mode=symbol]{$bc}{\\percent} & &")
+        # println("\\SI[per-mode=symbol]{$os}{\\mega\\watt} &")
+        # println("\\SI[per-mode=symbol]{$of}{\\mega\\watt} &")
+        # println("\\SI[per-mode=symbol]{$oc}{\\percent} & &")
+        # println("\\SI[per-mode=symbol]{$is}{\\percent} &")
+        # println("\\SI[per-mode=symbol]{$iff}{\\percent} \\\\")
         
         # println(dirdata[i,:])
     end
@@ -371,19 +380,19 @@ function opt_comparison_table()
 
 end
 
-function directional_comparison_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison")
-    
+function directional_comparison_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison", case="high-ti", tuning="sowfa-nrel", normalize=false)
+
     # flowfarm base data 
-    basepowerfileff = "image-data/power/turbine-power-ff-100pts-low-ti-alldirections.txt"
+    basepowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout1.txt"
 
     # sowfa base data
-    basepowerfilesowfa = "image-data/power/turbine-power-low-ti-les.txt"
+    basepowerfilesowfa = "image-data/power/turbine-power-$case-les.txt"
 
     # flowfarm opt data 
-    optpowerfileff = "image-data/power/turbine-power-ff-100pts-low-ti-alldirections-opt.txt"
+    optpowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout83-opt4.txt"
 
     # sowfa opt data 
-    optpowerfilesowfa = "image-data/power/turbine-power-low-ti-les-opt.txt"
+    optpowerfilesowfa = "image-data/power/turbine-power-$case-les-opt4.txt"
 
     # windrose data 
     winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
@@ -400,30 +409,44 @@ function directional_comparison_figure(colors, fontsize; showfigs=false, savefig
     # name wind data columns 
     rename!(winddf,:Column1 => :d,:Column2 => :s,:Column3 => :p)
 
+    nturbines = length(basesowfadf.Column1)
+    println("nturbs = ", nturbines)
+
     # compute directional data 
-    basedirpowerff = sum.(eachcol(baseffdf))
-    optdirpowerff = sum.(eachcol(optffdf))
-    basedirpowersowfa = sum.(eachcol(basesowfadf))
-    optdirpowersowfa = sum.(eachcol(optsowfadf))
+    if normalize
+        normalization_factor_sowfa = nturbines*maximum(maximum(eachrow(basesowfadf)))
+        normalization_factor_bp = nturbines*maximum(maximum(eachrow(baseffdf)))
+    else
+        normalization_factor_sowfa = 1E6
+        normalization_factor_bp = 1E6
+    end
+
+    println(normalization_factor_sowfa)
+    println(normalization_factor_bp)
+
+    basedirpowerff = sum.(eachcol(baseffdf))./normalization_factor_bp
+    optdirpowerff = sum.(eachcol(optffdf))./normalization_factor_bp
+    basedirpowersowfa = sum.(eachcol(basesowfadf))./normalization_factor_sowfa
+    optdirpowersowfa = sum.(eachcol(optsowfadf))./normalization_factor_sowfa
 
     # create directional power bar charts
     fig, ax = plt.subplots(1, figsize=[6,4])
 
     # ax.bar(winddf.d .- 5, optdirpowersowfa.*1E-6, label="SOWFA-Opt", width=10, color=colors[3])
-    ax.plot(winddf.d , optdirpowersowfa.*1e-6, color=colors[3], marker="o", linestyle="--")
-    ax.annotate("SOWFA-Optimized", (160, 65), color=colors[3])
+    ax.plot(winddf.d , optdirpowersowfa, color=colors[3], marker="o", linestyle="--")
+    ax.annotate("SOWFA-optimized", (160, 65), color=colors[3])
     # ax.bar(winddf.d .- 5, basedirpowersowfa.*1E-6, label="SOWFA-Base", width=10, color=colors[2])
-    ax.plot(winddf.d , basedirpowersowfa.*1e-6, color=colors[2], marker="o", linestyle="--")
-    ax.annotate("SOWFA-Base", (160, 55), color=colors[2])
+    ax.plot(winddf.d , basedirpowersowfa, color=colors[2], marker="o", linestyle="--")
+    ax.annotate("SOWFA-base", (160, 55.5), color=colors[2])
     # ax.bar(winddf.d .+ 5, optdirpowerff.*1E-6, label="BP-Opt", width=10, color=colors[4])
-    ax.plot(winddf.d , optdirpowerff.*1e-6, color=colors[4], marker="o", linestyle="--")
-    ax.annotate("BP-Optimized", (160, 59), color=colors[4])
+    ax.plot(winddf.d , optdirpowerff, color=colors[4], marker="o", linestyle="--")
+    ax.annotate("BP-optimized", (160, 60), color=colors[4])
     # ax.bar(winddf.d .+ 5, basedirpowerff.*1E-6, label="BP-Base", width=10, color=colors[1])
-    ax.plot(winddf.d , basedirpowerff.*1e-6, color=colors[1], marker="o", linestyle="--")
-    ax.annotate("BP-Base", (160, 50), color=colors[1])
+    ax.plot(winddf.d , basedirpowerff, color=colors[1], marker="o", linestyle="--")
+    ax.annotate("BP-base", (160, 53), color=colors[1])
 
     # format the figure
-    ax.set(xticks=winddf.d, ylim=[40, 70], xlabel="Direction (deg.)", ylabel="Directional Power (MW)")
+    ax.set(xticks=winddf.d, ylim=[40, 70], xlabel="Direction (degrees)", ylabel="Directional power (MW)")
     ax.legend(frameon=false,ncol=2)
 
     # remove upper and right bounding box
@@ -492,7 +515,7 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
 
         # create heatmap
         im, cbar = heatmap(data, rowlabels, 1:nturbines, ax=ax, edgecolors = edgecolors,
-                cbarlabel="Turbine Power Error as Percent of Max SOWFA Turbine Power", cbar_kw=d)
+                cbarlabel="Turbine power error as percent of maximum SOWFA turbine power", cbar_kw=d)
 
         # remove upper and right bounding box
         ax.spines["right"].set_visible(false)
@@ -542,19 +565,19 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
 
 
     # load wake data 
-    wakecountfile = "image-data/power/turbine-wakes-$case-$tuning.txt"
+    wakecountfile = "image-data/power/turbine_wakes.txt"
     
     # flowfarm base data 
-    basepowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning.txt"
+    basepowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout1.txt"
 
     # sowfa base data
     basepowerfilesowfa = "image-data/power/turbine-power-$case-les.txt"
 
     # flowfarm opt data 
-    optpowerfileff = "image-data/power/turbine-power-ff-100pts-low-ti-$tuning-opt.txt"
+    optpowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout83-opt4.txt"
     
     # sowfa opt data 
-    optpowerfilesowfa = "image-data/power/turbine-power-low-ti-les-opt.txt"
+    optpowerfilesowfa = "image-data/power/turbine-power-$case-les-opt4.txt"
 
     # windrose data 
     winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
@@ -580,7 +603,7 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
     turberror = errors(basesowfa, baseff, method="normbyfirst")
     ers = (sum(basesowfa[i,:] for i=1:12 ) .- sum(baseff[j,:] for j=1:12))
     # ers = (basesowfa .- baseff)
-    println("base turbine error sum $case $tuning: $(sqrt(sum(ers.^2)))")
+    println("base turbine error sum $case $tuning: $(sum(turberror))")
     # println(basesowfa)
     # println(baseff)
     data = convert.(Int64, round.(turberror.*100, digits=0))
@@ -595,7 +618,7 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
         # println(sumterm)
     end
     # plot error on heatmap
-    plot_turbine_heatmap(data, winddf.d, vmin, vmax, wake_count=wake_count)
+    plot_turbine_heatmap(data, winddf.d, vmin, vmax)
 
     if savefigs
         plt.savefig(image_directory*image_name*"-"*case*"-"*tuning*".pdf", transparent=true)
@@ -620,36 +643,54 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
 
 end
 
-function horns_rev_rows_verification_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="horns-rev-rows", nsamplepoints=100)
+function horns_rev_rows_verification_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="horns-rev-rows")
 
-    # load FLOWFarm and Niayifar data
-    datafile = "image-data/verification/horns-rev-rows-$nsamplepoints-sample-points.txt"
-    data = readdlm(datafile, skipstart=1)
-    rows = data[:, 1]
-    normalized_power_les_niayifar = data[:,2]
-    normalized_power_model_niayifar = data[:, 3]
-    normalized_power_averaged_ff_no_ti = data[:,4]
-    normalized_power_averaged_ff_ti = data[:, 5]
 
-    fig, ax = plt.subplots(figsize=(5,3))
+    # this function is called to populate each subfigure
+    function each_subfig!(ax, nsamplepoints, colors, fontsize)
+        # load FLOWFarm and Niayifar data
+        datafile = "image-data/verification/horns-rev-rows-$nsamplepoints-sample-points.txt"
+        data = readdlm(datafile, skipstart=1)
+        rows = data[:, 1]
+        normalized_power_les_niayifar = data[:,2]
+        normalized_power_model_niayifar = data[:, 3]
+        normalized_power_averaged_ff_no_ti = data[:,4]
+        normalized_power_averaged_ff_ti = data[:, 5]
 
-    ax.scatter(rows, normalized_power_les_niayifar, c=colors[1], label="Niayifar 2016 LES", marker="o")
-    ax.scatter(rows, normalized_power_model_niayifar, c=colors[4], label="Niayifar 2016 Model", marker="*")
-    ax.scatter(rows, normalized_power_averaged_ff_no_ti, edgecolors=colors[2], label="BP w/o Local TI", marker="^", facecolors="none")
-    ax.scatter(rows, normalized_power_averaged_ff_ti, edgecolors=colors[3], label="BP w/Local TI", marker="v", facecolors="none")
-    
-    # format the figure
-    ax.set(xlabel="Row", ylabel="Normalized Power", ylim=[0,1.1], xticks=Int.(rows))
-    ax.legend(frameon=false,ncol=1)
+        markersize = 15
+        ax.scatter(rows, normalized_power_les_niayifar, c=colors[1], label="Niayifar 2016 LES", marker="o", s=markersize)
+        ax.scatter(rows, normalized_power_model_niayifar, c=colors[4], label="Niayifar 2016 model", marker="*", s=markersize)
+        ax.scatter(rows, normalized_power_averaged_ff_no_ti, edgecolors=colors[2], label="BP w/o local TI", marker="^", facecolors="none", s=markersize)
+        ax.scatter(rows, normalized_power_averaged_ff_ti, edgecolors=colors[3], label="BP w/local TI", marker="v", facecolors="none", s=markersize)
+        
+        # format the figure
+        ax.set(xlabel="Row", ylabel="Normalized power", ylim=[0,1.1], xticks=Int.(rows))
+        ax.legend(frameon=false,ncol=1)
 
-    # remove upper and right bounding box
-    ax.spines["right"].set_visible(false)
-    ax.spines["top"].set_visible(false)
+        # remove upper and right bounding box
+        ax.spines["right"].set_visible(false)
+        ax.spines["top"].set_visible(false)
+
+        # calculate the appropriate x location for the given figure 
+        xtxtloc = (maximum(rows) + minimum(rows))/2
+        println(xtxtloc)
+        return xtxtloc
+    end
+
+    fig, ax = plt.subplots(1,2,figsize=(8,3))
+
+    xtxtloc100 = each_subfig!(ax[1], 100, colors, fontsize)
+    xtxtloc1 = each_subfig!(ax[2], 1, colors, fontsize)
+
+    ax[1].text(xtxtloc100,-0.3,"(a)",horizontalalignment="center",fontsize=fontsize)
+    ax[2].text(xtxtloc1,-0.3,"(b)",horizontalalignment="center",fontsize=fontsize)
+
+    plt.subplots_adjust(top=0.99,bottom=0.22,right=0.92,left=0.08,wspace=5.4)
 
     plt.tight_layout()
 
     if savefigs
-        plt.savefig(image_directory*image_name*"-$nsamplepoints-sample-points.pdf", transparent=true)
+        plt.savefig(image_directory*image_name*".pdf", transparent=true)
     end
 
     # save figure
@@ -658,43 +699,59 @@ function horns_rev_rows_verification_figure(colors, fontsize; showfigs=false, sa
     end
 end
 
-function horns_rev_direction_verification_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="horns-rev-directions", nsamplepoints=100)
-
-    # load FLOWFarm and Niayifar data
-    lesfile = "../src/inputfiles/results-niayifar-2016/horns-rev-normalized-power-by-direction-les.txt"
-    modelfile = "image-data/verification/horns-rev-direction-$nsamplepoints-sample-points.txt"
-
-    lesdata = readdlm(lesfile, ',', skipstart=1)
-    modeldata = readdlm(modelfile, skipstart=1)
+function horns_rev_direction_verification_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="horns-rev-directions")
     
-    lesdirections = lesdata[:, 1]
-    normalized_power_les_niayifar = lesdata[:,2]
+    # this function is called to populate each subfigure
+    function each_subfig!(ax, nsamplepoints, colors)
+        # load FLOWFarm and Niayifar data
+        lesfile = "../src/inputfiles/results-niayifar-2016/horns-rev-normalized-power-by-direction-les.txt"
+        modelfile = "image-data/verification/horns-rev-direction-$nsamplepoints-sample-points.txt"
 
-    modeldirections = modeldata[:, 1]
-    normalized_power_model_niayifar = modeldata[:, 2]
-    normalized_power_averaged_ff_no_ti = modeldata[:,3]
-    normalized_power_averaged_ff_ti = modeldata[:, 4]
+        lesdata = readdlm(lesfile, ',', skipstart=1)
+        modeldata = readdlm(modelfile, skipstart=1)
+        
+        lesdirections = lesdata[:, 1]
+        normalized_power_les_niayifar = lesdata[:,2]
 
-    fig, ax = plt.subplots(figsize=(5,3))
-    println(lesdirections)
-    println(modeldirections)
-    ax.plot(lesdirections, normalized_power_les_niayifar, c=colors[1], label="Niayifar 2016 LES", marker="o", linestyle="none", markersize=4)
-    ax.plot(modeldirections, normalized_power_model_niayifar, "-", c=colors[4], label="Niayifar 2016 Model")
-    ax.plot(modeldirections, normalized_power_averaged_ff_no_ti, "--", c=colors[2], label="BP w/o Local TI")
-    ax.plot(modeldirections, normalized_power_averaged_ff_ti, ":", c=colors[3], label="BP w/Local TI")
+        modeldirections = modeldata[:, 1]
+        normalized_power_model_niayifar = modeldata[:, 2]
+        normalized_power_averaged_ff_no_ti = modeldata[:,3]
+        normalized_power_averaged_ff_ti = modeldata[:, 4]
+
+        ax.plot(lesdirections, normalized_power_les_niayifar, c=colors[1], label="Niayifar 2016 LES", marker="o", linestyle="none", markersize=3)
+        ax.plot(modeldirections, normalized_power_model_niayifar, "-", c=colors[4], label="Niayifar 2016 model")
+        ax.plot(modeldirections, normalized_power_averaged_ff_no_ti, "--", c=colors[2], label="BP w/o local TI")
+        ax.plot(modeldirections, normalized_power_averaged_ff_ti, ":", c=colors[3], label="BP w/local TI")
+        
+        # format the figure
+        ax.set(xlabel="Direction (degrees)", ylabel="Normalized power", ylim=[0,1])
+        ax.legend(frameon=false, ncol=2)
+
+        # remove upper and right bounding box
+        ax.spines["right"].set_visible(false)
+        ax.spines["top"].set_visible(false)
+
+        # calculate the appropriate x location for the given figure 
+        xtxtloc = (maximum(modeldirections) + minimum(modeldirections))/2
+        println(xtxtloc)
+        return xtxtloc
+    end
+
+    fig, ax = plt.subplots(1,2, figsize=(10,4))
+
     
-    # format the figure
-    ax.set(xlabel="Direction (deg.)", ylabel="Normalized Power", ylim=[0,1])
-    ax.legend(frameon=false,ncol=2)
+    xtxtloc100 = each_subfig!(ax[1], 100, colors)
+    xtxtloc1 = each_subfig!(ax[2], 1, colors)
 
-    # remove upper and right bounding box
-    ax.spines["right"].set_visible(false)
-    ax.spines["top"].set_visible(false)
+    ax[1].text(xtxtloc100,-0.3,"(a)",horizontalalignment="center")
+    ax[2].text(xtxtloc1,-0.3,"(b)",horizontalalignment="center")
+
+    plt.subplots_adjust(top=0.99,bottom=0.22,right=0.92,left=0.08,wspace=0.8)
 
     plt.tight_layout()
 
     if savefigs
-        plt.savefig(image_directory*image_name*"-$nsamplepoints-sample-points.pdf", transparent=true)
+        plt.savefig(image_directory*image_name*".pdf", transparent=true)
     end
 
     # save figure
@@ -797,15 +854,15 @@ function rotor_sample_points(x1,y1,x2,y2;color="C0",fontsize=10,filename="nosave
     ax2.axis("equal")
 
 
-    ax1.plot(x1,y1,"o",color=color,markersize=4,label="sampling points")
+    ax1.plot(x1,y1,"o",color=color,markersize=4,label="Sampling points")
     ax2.plot(x2,y2,"o",color=color,markersize=4)
     ax1.legend(fontsize=fontsize)
 
     # ax1.set_xlabel(r"Horizontal Distance From Hub, $\Delta y/d$",fontsize=fontsize)
-    ax1.set_xlabel("Horizontal Distance From Hub, "*L"\Delta y/d",fontsize=fontsize)
-    ax1.set_ylabel("Vertical Distance From Hub, "*L"\Delta z/d",fontsize=fontsize)
-    ax2.set_xlabel("Horizontal Distance From Hub, "*L"\Delta y/d",fontsize=fontsize)
-    ax2.set_ylabel("Vertical Distance From Hub, "*L"\Delta z/d",fontsize=fontsize)
+    ax1.set_xlabel("Horizontal distance from hub, "*L"\Delta y/d",fontsize=fontsize)
+    ax1.set_ylabel("Vertical distance from hub, "*L"\Delta z/d",fontsize=fontsize)
+    ax2.set_xlabel("Horizontal distance from hub, "*L"\Delta y/d",fontsize=fontsize)
+    ax2.set_ylabel("Vertical distance from hub, "*L"\Delta z/d",fontsize=fontsize)
 
     ax1.text(0,-1.3,"(a)",horizontalalignment="center",fontsize=fontsize)
     ax2.text(0,-1.3,"(b)",horizontalalignment="center",fontsize=fontsize)
@@ -890,12 +947,12 @@ function turbine_layouts(colors ;rotor_diameter=126.4,les_side=5000,
     cy = 2500
     lw = 0.75
     plot_circle(cx,cy,boundary_radius,colors[2],ax,linestyle="--",linewidth=lw,label="Farm boundary")
-    ax.annotate("Farm Boundary", (les_radius, les_radius-boundary_radius-rotor_diameter*2.5), color=colors[2])
+    ax.annotate("Farm boundary", (les_radius, les_radius-boundary_radius-rotor_diameter*2.5), color=colors[2])
 
     les_x = [0,les_side,les_side,0,0]
     les_y = [0,0,les_side,les_side,0]
-    ax.plot(les_x,les_y,"-",color=colors[4],linewidth=lw,label="LES Domain")
-    ax.annotate("LES Domain", (0, les_side+rotor_diameter/2.0), color=colors[4])
+    ax.plot(les_x,les_y,"-",color=colors[4],linewidth=lw,label="LES domain")
+    ax.annotate("LES domain", (0, les_side+rotor_diameter/2.0), color=colors[4])
     
     nturbs = length(xlocs)
     for i=1:nturbs
@@ -1020,7 +1077,7 @@ function vertical_slice(colors; savefigs=false, showfigs=false, fontsize=10)
     ax[1].add_patch(r)
 
     position=fig.add_axes([0.8,0.2,0.03,0.725])
-    cbar = fig.colorbar(cs, cax=position, ax=[ax[1],ax[2]], label="Wind Speed (m/s)", use_gridspec=true)
+    cbar = fig.colorbar(cs, cax=position, ax=[ax[1],ax[2]], label=L"Wind speed (m s$^{-1}$)", use_gridspec=true)
     
     # add turbine 
     radius = 0.5
@@ -1043,10 +1100,10 @@ function vertical_slice(colors; savefigs=false, showfigs=false, fontsize=10)
     figt = plt.gcf()
     xtxtloc = (xmin + (xmax-xmin)/2.0)/diam
     
-    ax[1].text(xtxtloc,-1.,"(a)",horizontalalignment="center",fontsize=fontsize)
-    ax[2].text(xtxtloc,-1.,"(b)",horizontalalignment="center",fontsize=fontsize)
+    ax[1].text(xtxtloc,-1.,"(a)",horizontalalignment="center")
+    ax[2].text(xtxtloc,-1.,"(b)",horizontalalignment="center")
 
-    plt.subplots_adjust(top=1,bottom=0.2,right=0.92,left=0.12,hspace=0.5)
+    plt.subplots_adjust(top=1,bottom=0.1,right=0.92,left=0.12,hspace=0.5)
 
     # format figure 
     ax[1].set(xticks=0:4:20, yticks=0:2)
@@ -1075,7 +1132,7 @@ function generate_images_for_publication()
 
     rcParams = PyPlot.matplotlib.rcParams
     rcParams["font.size"] = fontsize
-    rcParams["lines.markersize"] = 8
+    rcParams["lines.markersize"] = 1
     rcParams["axes.prop_cycle"] = colors
 
     savefigs = true 
@@ -1084,20 +1141,19 @@ function generate_images_for_publication()
     # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti")
     # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
     # layout(colors, fontsize)
-    # opt_comparison_table()
-    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
+    opt_comparison_table(case="high-ti", tuning="sowfa-nrel")
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false)
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="alldirections")
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="alldirections")
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="all")
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="all")
-    # horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=1, savefigs=savefigs, showfigs=showfigs)
-    # horns_rev_rows_verification_figure(colors, fontsize, nsamplepoints=100, savefigs=savefigs, showfigs=showfigs)
-    # horns_rev_direction_verification_figure(colors, fontsize, nsamplepoints=1, savefigs=savefigs, showfigs=showfigs)
-    # horns_rev_direction_verification_figure(colors, fontsize, nsamplepoints=100, savefigs=savefigs, showfigs=showfigs)
+    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel")
+    # horns_rev_rows_verification_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
+    # horns_rev_direction_verification_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
 
     # turbine_layouts(colors, case="low-ti-opt", showfigs=showfigs, savefigs=savefigs)
     # turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
 
-    vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
-    # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs, version = "original")
+    # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
+    
 end

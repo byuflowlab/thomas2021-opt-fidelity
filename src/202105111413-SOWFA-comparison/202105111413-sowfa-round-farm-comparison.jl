@@ -348,11 +348,14 @@ function custom_color_map()
 end
 
 # function to compare directions 
-function sowfa_base_comparison(nsamplepoints=1; case="low-ti", tuning="alldirections", opt=false, guess=false)
+function sowfa_base_comparison(nsamplepoints=1; case="low-ti", tuning="alldirections", opt=false, guess=false, modelsetopt=true)
 
     # load wind farm information 
-    include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-$case-$tuning.jl")
-
+    if modelsetopt
+        include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-opt.jl")
+    else
+        include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-$case-$tuning.jl")
+    end
     # load data
     turbine_powers_by_direction_sowfa, turbine_powers_by_direction_thomas2019 = get_data(case=case, opt=opt)
 
