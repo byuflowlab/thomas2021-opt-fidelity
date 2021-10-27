@@ -54,8 +54,10 @@ function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layouti
     
     if case == "high-ti"
         shearexponent = 0.175 
-    else
+    elseif case == "low-ti"
         shearexponent = 0.084 
+    else
+        error("Incorrect case ($case) specified")
     end
     
     # load power and thrust curves

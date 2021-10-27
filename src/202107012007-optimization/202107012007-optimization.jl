@@ -177,6 +177,9 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
 
     # scale objective to be between 0 and 1
     obj_scale = 1E-9 #1E-11
+    if case == "low-ti"
+        obj_scale = 1E-8
+    end
     con_scale_boundary = 1E-4
     xyscale = 1 #1E4
 
@@ -286,7 +289,7 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
             # set SNOPT options
             snopt_opt = Dict(
                 "Derivative option" => 1,
-                "Verify level" => -1,
+                "Verify level" => 0,
                 "Major optimality tolerance" => convtol,
                 # "Major iterations limit" => 1E0,
                 "Summary file" => outdir*"snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out",
@@ -356,7 +359,7 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
             # set SNOPT options
             snopt_opt = Dict(
                 "Derivative option" => 1,
-                "Verify level" => -1,
+                "Verify level" => 0,
                 "Major optimality tolerance" => convtol,
                 # "Major iterations limit" => 1E0,
                 "Summary file" => outdir*"snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti).out",
@@ -457,7 +460,7 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
     if verbose
         println("Finished in : ", clk, " (s)")
         println("info: ", info)
-        println("end objective value: ", -fopt)
+        # println("end objective value: ", -fopt)
         # println("major iter = ", out.major_iter)
         # println("iterations = ", out.iterations)
         # println("solve time = ", out.run_time)
@@ -483,7 +486,7 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
     return xopt, aep_init, aep_final, aep_init_base, aep_final_base, info, out, clk, fcalls
 end
 
-function run_optimization_series(nruns, case, tuning, outdir="./", layoutgen="individual"; wec=true, lspacing=3.0, firstrun=1)
+function run_optimization_series(nruns, case, tuning, outdir="./", layoutgen="individual"; wec=true, lspacing=3.0, firstrun=1, verbose=false, plotresults=false)
 
     layoutdir="../inputfiles/farms/startinglayouts/$layoutgen/"
 
@@ -499,7 +502,7 @@ function run_optimization_series(nruns, case, tuning, outdir="./", layoutgen="in
 
     for i = firstrun:nruns
         println("running optimization $i")
-        xopt, aepi, aepf, aepib, aepfb, info, out, clk, fcalls = run_optimization(i; case=case, tuning=tuning, plotresults=false, verbose=false, wec=wec, nrotorpoints=1, alpha=0, savehistory=true, optimize=true, outdir=outdir, layoutdir=layoutdir, lspacing=lspacing)
+        xopt, aepi, aepf, aepib, aepfb, info, out, clk, fcalls = run_optimization(i; case=case, tuning=tuning, plotresults=plotresults, verbose=verbose, wec=wec, nrotorpoints=1, alpha=0, savehistory=true, optimize=true, outdir=outdir, layoutdir=layoutdir, lspacing=lspacing)
         push!(xoptdata, xopt)
         push!(aepinitdata, aepi)
         push!(aepfinaldata, aepf)
