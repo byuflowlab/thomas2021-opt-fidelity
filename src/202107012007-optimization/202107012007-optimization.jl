@@ -288,7 +288,7 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
 
             # set SNOPT options
             snopt_opt = Dict(
-                "Derivative option" => 1,
+                # "Derivative option" => 1,
                 "Verify level" => 0,
                 "Major optimality tolerance" => convtol,
                 # "Major iterations limit" => 1E0,
