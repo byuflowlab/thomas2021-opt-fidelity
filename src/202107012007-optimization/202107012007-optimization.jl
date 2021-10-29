@@ -486,7 +486,7 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
     return xopt, aep_init, aep_final, aep_init_base, aep_final_base, info, out, clk, fcalls
 end
 
-function run_optimization_series(nruns, case, tuning, outdir="./", layoutgen="individual"; wec=true, lspacing=3.0, firstrun=1, verbose=false, plotresults=false, savehistory=true)
+function run_optimization_series(nruns, case, tuning; outdir="./", layoutgen="individual", wec=true, lspacing=3.0, firstrun=1, verbose=false, plotresults=false, savehistory=true)
 
     layoutdir="../inputfiles/farms/startinglayouts/$layoutgen/"
 
@@ -500,7 +500,7 @@ function run_optimization_series(nruns, case, tuning, outdir="./", layoutgen="in
     timedata = []
     fcalldata = []
 
-    for i = firstrun:nruns
+    for i = firstrun:nruns+firstrun-1
         println("running optimization $i")
         xopt, aepi, aepf, aepib, aepfb, info, out, clk, fcalls = run_optimization(i; case=case, tuning=tuning, plotresults=plotresults, verbose=verbose, wec=wec, nrotorpoints=1, alpha=0, savehistory=savehistory, optimize=true, outdir=outdir, layoutdir=layoutdir, lspacing=lspacing)
         push!(xoptdata, xopt)
@@ -513,7 +513,7 @@ function run_optimization_series(nruns, case, tuning, outdir="./", layoutgen="in
         push!(timedata, clk)
         push!(fcalldata, fcalls)
         df = DataFrame(xopt=xoptdata, aepi=aepinitdata, aepf=aepfinaldata, aepib=aepinitbasedata, aepfb=aepfinalbasedata, info=infodata, out=outdata, time=timedata, fcalls=fcalldata)
-        CSV.write(outdir*"opt-overall-results-$case-$tuning.csv", df)
+        CSV.write(outdir*"opt-overall-results-$case-$tuning-startrun$firstrun-nruns$nruns.csv", df)
     end
 
 end
