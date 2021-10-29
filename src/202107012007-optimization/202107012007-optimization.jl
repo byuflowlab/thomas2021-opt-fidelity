@@ -486,7 +486,7 @@ function run_optimization(layoutid; case="high-ti", tuning="sowfa-nrel", plotres
     return xopt, aep_init, aep_final, aep_init_base, aep_final_base, info, out, clk, fcalls
 end
 
-function run_optimization_series(nruns, case, tuning, outdir="./", layoutgen="individual"; wec=true, lspacing=3.0, firstrun=1, verbose=false, plotresults=false)
+function run_optimization_series(nruns, case, tuning, outdir="./", layoutgen="individual"; wec=true, lspacing=3.0, firstrun=1, verbose=false, plotresults=false, savehistory=true)
 
     layoutdir="../inputfiles/farms/startinglayouts/$layoutgen/"
 
@@ -502,7 +502,7 @@ function run_optimization_series(nruns, case, tuning, outdir="./", layoutgen="in
 
     for i = firstrun:nruns
         println("running optimization $i")
-        xopt, aepi, aepf, aepib, aepfb, info, out, clk, fcalls = run_optimization(i; case=case, tuning=tuning, plotresults=plotresults, verbose=verbose, wec=wec, nrotorpoints=1, alpha=0, savehistory=true, optimize=true, outdir=outdir, layoutdir=layoutdir, lspacing=lspacing)
+        xopt, aepi, aepf, aepib, aepfb, info, out, clk, fcalls = run_optimization(i; case=case, tuning=tuning, plotresults=plotresults, verbose=verbose, wec=wec, nrotorpoints=1, alpha=0, savehistory=savehistory, optimize=true, outdir=outdir, layoutdir=layoutdir, lspacing=lspacing)
         push!(xoptdata, xopt)
         push!(aepinitdata, aepi)
         push!(aepfinaldata, aepf)
