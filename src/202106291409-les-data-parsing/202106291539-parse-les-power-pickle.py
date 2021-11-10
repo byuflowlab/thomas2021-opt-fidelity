@@ -8,6 +8,7 @@ from scipy.stats.stats import energy_distance
 def pickle_to_csv(case="low_ti",layout="",n="4"):
     if case == "low-ti":
         case2 = "low_ti"
+        case3 = "low_TI"
     if case == "high-ti":
         case2 = "high_ti"
         case3 = "high_TI"
@@ -37,5 +38,6 @@ def pickle_to_csv(case="low_ti",layout="",n="4"):
 
 if __name__ == "__main__":
     pickle_to_csv(case="high-ti", layout="-opt", n="4")
+    pickle_to_csv(case="low-ti", layout="-opt", n="2")
     # pickle_to_csv(case="low-ti", layout="")
     # pickle_to_csv(case="low-ti", layout="-opt")

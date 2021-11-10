@@ -19,10 +19,13 @@ function load_results(case, tuning; wec=true, dir="")
     if dir==""
         dir = "opt-$case"
     end
-    if wec 
-        datafilename = "/Users/jaredthomas/OneDrive - Brigham Young University/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/$dir-wec/opt-overall-results-$case-$tuning.csv"
-    else
-        datafilename = "/Users/jaredthomas/OneDrive - Brigham Young University/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/$dir-no-wec/opt-overall-results-$case-$tuning.csv"
+    prepath = "/Users/jaredthomas/OneDrive - Brigham Young University/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/"
+    if wec && case != "low-ti"
+        datafilename = prepath*"$dir-wec/opt-overall-results-$case-$tuning.csv"
+    elseif !wec && case != "low-ti"
+        datafilename = prepath*"$dir-no-wec/opt-overall-results-$case-$tuning.csv"
+    elseif wec && case == "low-ti"
+        datafilename = prepath*"$dir-wec/opt-overall-results-$case-$tuning-startrun1-nruns400.csv"
     end
     df = DataFrame(CSV.File(datafilename, header=true))
 
@@ -124,7 +127,8 @@ function show_layout_results_by_id(df, idx, layoutdir, lspacing)
         turbineyb = baselayout[1:nturbines, 2].*diam
 
         fig, ax = plt.subplots(1)
-        ff.plotlayout!(ax, turbinexb, turbineyb, ones(nturbines).*126.4)
+        ff.plotwindfarm!(ax, turbinexb, turbineyb, ones(nturbines).*126.4, 
+            xlim=[minimum(turbinexb), maximum(turbinexb)], ylim=[minimum(turbineyb), maximum(turbineyb)])
         plt.show()
 
         startlayout = readdlm("$(layoutdir)nTurbs38_spacing$(lspacing)_layout_$idx.txt",  ',', skipstart=1)
@@ -132,7 +136,8 @@ function show_layout_results_by_id(df, idx, layoutdir, lspacing)
         turbineys = startlayout[1:nturbines, 2].*diam
 
         fig, ax = plt.subplots(1)
-        ff.plotlayout!(ax, turbinexs, turbineys, ones(nturbines).*126.4)
+        ff.plotwindfarm!(ax, turbinexs, turbineys, ones(nturbines).*126.4, 
+            xlim=[minimum(turbinexs), maximum(turbinexs)], ylim=[minimum(turbineys), maximum(turbineys)])
         plt.show()
 
     end
@@ -152,7 +157,8 @@ function show_layout_results_by_id(df, idx, layoutdir, lspacing)
     turbiney = xopt[nturbines+1:end]
 
     fig, ax = plt.subplots(1)
-    ff.plotlayout!(ax, turbinex, turbiney, ones(nturbines).*126.4)
+    ff.plotwindfarm!(ax, turbinex, turbiney, ones(nturbines).*126.4, 
+        xlim=[minimum(turbinex), maximum(turbinex)], ylim=[minimum(turbiney), maximum(turbiney)])
 
     plt.show()
 
