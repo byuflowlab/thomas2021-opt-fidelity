@@ -180,6 +180,14 @@ function rerun(layoutid; case="high-ti", tuning="sowfa-nrel", plotresults=false,
     ct_models, wind_shear_model, sorted_turbine_index, wind_resource, wakedeficitmodel, 
     wakedeflectionmodel, wakecombinationmodel, localtimodel, model_set = wind_farm_setup(38, case=case, tuning=tuning, layoutid=layoutid, nrotorpoints=nrotorpoints, alpha=alpha, layoutdir=layoutdir, lspacing=lspacing)
 
+    # get starting layout
+    _, turbine_x_base, turbine_y_base, _, _, _, _, _, 
+    _, _, _, _, _, 
+    _, _, _, _, _, 
+    _, _, _, _, _, _, 
+    _, _, _, _, _, 
+    _, _, _, _ = wind_farm_setup(38, case=case, tuning=tuning, layoutid=1, nrotorpoints=nrotorpoints, alpha=alpha, layoutdir=layoutdir, lspacing=lspacing)
+
     optlayoutfile = "../../image-generation/image-data/layouts/opt/$case-$tuning-opt$n-layout$layoutid-aec-wec.csv"
 
     # extract data
@@ -222,32 +230,44 @@ function rerun(layoutid; case="high-ti", tuning="sowfa-nrel", plotresults=false,
     println("aep opt base: ", aep_opt_base)
     
     # get power by direction for both 1 and 100 sample points 
+    turbine_power_by_direction_base_1 = turbine_power_by_direction_from_params(turbine_x_base, turbine_y_base, params)
+    turbine_power_by_direction_base_100 = turbine_power_by_direction_from_params(turbine_x_base, turbine_y_base, params_base)
     turbine_power_by_direction_start_1 = turbine_power_by_direction_from_params(turbine_x_start, turbine_y_start, params)
     turbine_power_by_direction_start_100 = turbine_power_by_direction_from_params(turbine_x_start, turbine_y_start, params_base)
     turbine_power_by_direction_opt_1 = turbine_power_by_direction_from_params(turbine_x_opt, turbine_y_opt, params)
     turbine_power_by_direction_opt_100 = turbine_power_by_direction_from_params(turbine_x_opt, turbine_y_opt, params_base)
 
     # get wake counts
+    wake_count_base = ff.wake_count_iec(turbine_x_base, turbine_y_base, wind_resource.wind_directions, rotor_diameter)
     wake_count_start = ff.wake_count_iec(turbine_x_start, turbine_y_start, wind_resource.wind_directions, rotor_diameter)
-    wake_count_opt = ff.wake_count_iec(turbine_x_start, turbine_y_start, wind_resource.wind_directions, rotor_diameter)
+    wake_count_opt = ff.wake_count_iec(turbine_x_opt, turbine_y_opt, wind_resource.wind_directions, rotor_diameter)
     
     # save data 
+    dfwcb = DataFrame(wake_count_base',:auto)
+    CSV.write("turbine-wakes-ff-$case-$tuning-layout1-base.txt", dfwcb, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+    
     dfwcs = DataFrame(wake_count_start',:auto)
-    CSV.write("turbine-wakes-start-ff-$case-$tuning-layout$layoutid.txt", dfwcs, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+    CSV.write("turbine-wakes-ff-$case-$tuning-layout$layoutid-start.txt", dfwcs, header=string.(round.(winddirections.*180.0./pi, digits=0)))
     
     dfwco = DataFrame(wake_count_opt',:auto)
-    CSV.write("turbine-wakes-opt$n-ff-$case-$tuning-layout$layoutid.txt", dfwco, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+    CSV.write("turbine-wakes-ff-$case-$tuning-layout$layoutid-opt$n.txt", dfwco, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+    
+    dfb1 = DataFrame(turbine_power_by_direction_base_1', :auto)
+    CSV.write("turbine-power-ff-1pts-$case-$tuning-layout1-base.txt", dfb1, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+
+    dfb100 = DataFrame(turbine_power_by_direction_base_100', :auto)
+    CSV.write("turbine-power-ff-100pts-$case-$tuning-layout1-base.txt", dfb100, header=string.(round.(winddirections.*180.0./pi, digits=0)))
     
     dfs1 = DataFrame(turbine_power_by_direction_start_1', :auto)
-    CSV.write("turbine-power-start-ff-1pts-$case-$tuning-layout$layoutid.txt", dfs1, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+    CSV.write("turbine-power-ff-1pts-$case-$tuning-layout$layoutid-start.txt", dfs1, header=string.(round.(winddirections.*180.0./pi, digits=0)))
 
     dfs100 = DataFrame(turbine_power_by_direction_start_100', :auto)
-    CSV.write("turbine-power-start-ff-100pts-$case-$tuning-layout$layoutid.txt", dfs100, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+    CSV.write("turbine-power-ff-100pts-$case-$tuning-layout$layoutid-start.txt", dfs100, header=string.(round.(winddirections.*180.0./pi, digits=0)))
     
     dfo1 = DataFrame(turbine_power_by_direction_opt_1', :auto)
-    CSV.write("turbine-power-opt$n-ff-1pts-$case-$tuning-layout$layoutid.txt", dfo1, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+    CSV.write("turbine-power-ff-1pts-$case-$tuning-layout$layoutid-opt$n.txt", dfo1, header=string.(round.(winddirections.*180.0./pi, digits=0)))
 
     dfo100 = DataFrame(turbine_power_by_direction_opt_100', :auto)
-    CSV.write("turbine-power-opt$n-ff-100pts-$case-$tuning-layout$layoutid.txt", dfo100, header=string.(round.(winddirections.*180.0./pi, digits=0)))
+    CSV.write("turbine-power-ff-100pts-$case-$tuning-layout$layoutid-opt$n.txt", dfo100, header=string.(round.(winddirections.*180.0./pi, digits=0)))
 
 end

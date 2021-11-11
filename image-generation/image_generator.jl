@@ -119,8 +119,8 @@ end
 function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="windshear-", case="high-ti")
 
     # load data 
-    df_model = DataFrame(CSV.File("./image-data/wind-shear/$(case)/wind-shear-tuned-$(case).txt", datarow=2, header=false))
-    df_les = DataFrame(CSV.File("./image-data/wind-shear/$(case)/wind-shear-les-$(case).txt", datarow=2, header=false))
+    df_model = DataFrame(CSV.File("./image-data/wind-shear/$(case)/wind-shear-tuned-$(case).txt", skipto=2, header=false))
+    df_les = DataFrame(CSV.File("./image-data/wind-shear/$(case)/wind-shear-les-$(case).txt", skipto=2, header=false))
 
     # name columns 
     rename!(df_model,:Column1 => :h,:Column2 => :s)
@@ -214,7 +214,7 @@ function layout(colors, fontsize; showfigs=false, savefigs=false, image_director
     end
 
     # extract data
-    df = DataFrame(CSV.File(datafile, datarow=2, header=false))
+    df = DataFrame(CSV.File(datafile, skipto=2, header=false))
 
     # name columns 
     rename!(df,:Column1 => :x,:Column2 => :y)
@@ -263,26 +263,26 @@ end
 
 function opt_comparison_table(;case="high-ti", tuning="sowfa-nrel")
     # flowfarm base data 
-    basepowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout1.txt"
+    basepowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout1-base.txt"
 
     # sowfa base data
-    basepowerfilesowfa = "image-data/power/turbine-power-$case-les.txt"
+    basepowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les.txt"
 
     # flowfarm opt data 
-    optpowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout83-opt4.txt"
+    optpowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout83-opt4.txt"
 
     # sowfa opt data 
-    optpowerfilesowfa = "image-data/power/turbine-power-$case-les-opt4.txt"
+    optpowerfilesowfa = "image-data/power/SOWFAturbine-power-$case-les-opt4.txt"
 
     # windrose data 
     winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
 
     # read files to dataframes
-    baseffdf = DataFrame(CSV.File(basepowerfileff, datarow=2, header=false))
-    optffdf = DataFrame(CSV.File(optpowerfileff, datarow=2, header=false))
-    basesowfadf = DataFrame(CSV.File(basepowerfilesowfa, datarow=2, header=false))
-    optsowfadf = DataFrame(CSV.File(optpowerfilesowfa, datarow=2, header=false))
-    winddf = DataFrame(CSV.File(winddatafile, datarow=2, header=false))
+    baseffdf = DataFrame(CSV.File(basepowerfileff, skipto=2, header=false))
+    optffdf = DataFrame(CSV.File(optpowerfileff, skipto=2, header=false))
+    basesowfadf = DataFrame(CSV.File(basepowerfilesowfa, skipto=2, header=false))
+    optsowfadf = DataFrame(CSV.File(optpowerfilesowfa, skipto=2, header=false))
+    winddf = DataFrame(CSV.File(winddatafile, skipto=2, header=false))
 
     # name wind data columns 
     rename!(winddf,:Column1 => :d,:Column2 => :s,:Column3 => :p)
@@ -392,27 +392,35 @@ end
 
 function directional_comparison_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison", case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
 
+    if case == "low-ti"
+        layout = 252
+        n = 2
+    elseif case == "high-ti"
+        layout = 83
+        n = 4
+    end
+
     # flowfarm base data 
-    basepowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout1.txt"
+    basepowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout1-base.txt"
 
     # sowfa base data
-    basepowerfilesowfa = "image-data/power/turbine-power-$case-les.txt"
+    basepowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les.txt"
 
     # flowfarm opt data 
-    optpowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout83-opt4.txt"
+    optpowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout$layout-opt$n.txt"
 
     # sowfa opt data 
-    optpowerfilesowfa = "image-data/power/turbine-power-$case-les-opt4.txt"
+    optpowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les-opt$n.txt"
 
     # windrose data 
     winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
 
     # read files to dataframes
-    baseffdf = DataFrame(CSV.File(basepowerfileff, datarow=2, header=false))
-    optffdf = DataFrame(CSV.File(optpowerfileff, datarow=2, header=false))
-    basesowfadf = DataFrame(CSV.File(basepowerfilesowfa, datarow=2, header=false))
-    optsowfadf = DataFrame(CSV.File(optpowerfilesowfa, datarow=2, header=false))
-    winddf = DataFrame(CSV.File(winddatafile, datarow=2, header=false))
+    baseffdf = DataFrame(CSV.File(basepowerfileff, skipto=2, header=false))
+    optffdf = DataFrame(CSV.File(optpowerfileff, skipto=2, header=false))
+    basesowfadf = DataFrame(CSV.File(basepowerfilesowfa, skipto=2, header=false))
+    optsowfadf = DataFrame(CSV.File(optpowerfilesowfa, skipto=2, header=false))
+    winddf = DataFrame(CSV.File(winddatafile, skipto=2, header=false))
 
     println("compare")
     println(sum.(eachcol(baseffdf .- basesowfadf)))
@@ -445,16 +453,23 @@ function directional_comparison_figure(colors, fontsize; showfigs=false, savefig
     if plottype == "power"
         # ax.bar(winddf.d .- 5, optdirpowersowfa.*1E-6, label="SOWFA-Opt", width=10, color=colors[3])
         ax.plot(winddf.d , optdirpowersowfa, color=colors[3], marker="o", linestyle="--")
-        ax.annotate("SOWFA-optimized", (160, 65), color=colors[3])
+        case=="high-ti" && ax.annotate("SOWFA-optimized", (160, 65), color=colors[3])
+        case=="low-ti" && ax.annotate("SOWFA-optimized", (160, 62), color=colors[3])
+
         # ax.bar(winddf.d .- 5, basedirpowersowfa.*1E-6, label="SOWFA-Base", width=10, color=colors[2])
         ax.plot(winddf.d , basedirpowersowfa, color=colors[2], marker="o", linestyle="--")
-        ax.annotate("SOWFA-base", (160, 55.5), color=colors[2])
+        case=="high-ti" && ax.annotate("SOWFA-base", (160, 55.5), color=colors[2])
+        case=="low-ti" && ax.annotate("SOWFA-base", (160, 54.5), color=colors[2])
+        
         # ax.bar(winddf.d .+ 5, optdirpowerff.*1E-6, label="BP-Opt", width=10, color=colors[4])
         ax.plot(winddf.d , optdirpowerff, color=colors[4], marker="o", linestyle="--")
-        ax.annotate("BP-optimized", (160, 60), color=colors[4])
+        case=="high-ti" && ax.annotate("BP-optimized", (160, 60), color=colors[4])
+        case=="low-ti" && ax.annotate("BP-optimized", (160, 56.5), color=colors[4])
+
         # ax.bar(winddf.d .+ 5, basedirpowerff.*1E-6, label="BP-Base", width=10, color=colors[1])
         ax.plot(winddf.d , basedirpowerff, color=colors[1], marker="o", linestyle="--")
-        ax.annotate("BP-base", (160, 53), color=colors[1])
+        case=="high-ti" && ax.annotate("BP-base", (160, 53), color=colors[1])
+        case=="low-ti" && ax.annotate("BP-base", (160, 50), color=colors[1])
 
         # format the figure
         ax.set(xticks=winddf.d, ylim=[40, 70], xlabel="Direction (degrees)", ylabel="Directional power (MW)")
@@ -465,10 +480,13 @@ function directional_comparison_figure(colors, fontsize; showfigs=false, savefig
         improvementff = (optdirpowerff./basedirpowerff .- 1.0)*100
         # ax.bar(winddf.d .- 5, optdirpowersowfa.*1E-6, label="SOWFA-Opt", width=10, color=colors[3])
         ax.plot(winddf.d , improvementsowfa, color=colors[3], marker="o", linestyle="--")
-        ax.annotate("SOWFA", (100, 9), color=colors[3])
+        case=="high-ti" && ax.annotate("SOWFA", (100, 9), color=colors[3])
+        case=="low-ti" && ax.annotate("SOWFA", (100, 10), color=colors[3])
+
         # ax.bar(winddf.d .- 5, basedirpowersowfa.*1E-6, label="SOWFA-Base", width=10, color=colors[2])
         ax.plot(winddf.d , improvementff, color=colors[2], marker="o", linestyle="--")
-        ax.annotate("BP", (160, 6), color=colors[2])
+        case=="high-ti" && ax.annotate("BP", (160, 6), color=colors[2])
+        case=="low-ti" && ax.annotate("BP", (160, 9), color=colors[2])
 
         # format the figure
         ax.set(xticks=winddf.d, ylim=[0, 15], xlabel="Direction (degrees)", ylabel="Directional Improvment (%)")
@@ -479,13 +497,16 @@ function directional_comparison_figure(colors, fontsize; showfigs=false, savefig
         erroropt = (optdirpowerff./optdirpowersowfa .- 1.0)*100
         # ax.bar(winddf.d .- 5, optdirpowersowfa.*1E-6, label="SOWFA-Opt", width=10, color=colors[3])
         ax.plot(winddf.d , errorbase, color=colors[3], marker="o", linestyle="--")
-        ax.annotate("Base", (130, -4.5), color=colors[3])
+        case=="high-ti" && ax.annotate("Base", (130, -4.5), color=colors[3])
+        case=="low-ti" && ax.annotate("Base", (130, -0.5), color=colors[3])
+
         # ax.bar(winddf.d .- 5, basedirpowersowfa.*1E-6, label="SOWFA-Base", width=10, color=colors[2])
         ax.plot(winddf.d , erroropt, color=colors[2], marker="o", linestyle="--")
-        ax.annotate("Optimized", (130, -8), color=colors[2])
+        case=="high-ti" && ax.annotate("Optimized", (130, -8), color=colors[2])
+        case=="low-ti" && ax.annotate("Optimized", (130, -2.6), color=colors[2])
 
         # format the figure
-        ax.set(xticks=winddf.d, ylim=[-10, 0], xlabel="Direction (degrees)", ylabel="Directional Error (%)")
+        ax.set(xticks=winddf.d, ylim=[-10, 2], xlabel="Direction (degrees)", ylabel="Directional Error (%)")
         ax.legend(frameon=false,ncol=2)
     end
     # remove upper and right bounding box
@@ -607,16 +628,16 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
     wakecountfile = "image-data/power/turbine_wakes.txt"
     
     # flowfarm base data 
-    basepowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout1.txt"
+    basepowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout1-base.txt"
 
     # sowfa base data
-    basepowerfilesowfa = "image-data/power/turbine-power-$case-les.txt"
+    basepowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les.txt"
 
     # flowfarm opt data 
-    optpowerfileff = "image-data/power/turbine-power-ff-100pts-$case-$tuning-layout83-opt4.txt"
+    optpowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout83-opt4.txt"
     
     # sowfa opt data 
-    optpowerfilesowfa = "image-data/power/turbine-power-$case-les-opt4.txt"
+    optpowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les-opt4.txt"
 
     # windrose data 
     winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
@@ -624,12 +645,12 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
     # read files to dataframes
     wake_count = transpose(readdlm(wakecountfile, ',', skipstart=1, header=false))
     baseff = transpose(readdlm(basepowerfileff, ',', skipstart=1, header=false))
-        # DataFrame(CSV.File(basepowerfileff, datarow=2, header=false))
+        # DataFrame(CSV.File(basepowerfileff, skipto=2, header=false))
     optff = transpose(readdlm(optpowerfileff, ',', skipstart=1, header=false))
     basesowfa = transpose(readdlm(basepowerfilesowfa, skipstart=1, header=false))
-    # DataFrame(CSV.File(basepowerfilesowfa, datarow=2, header=false))
+    # DataFrame(CSV.File(basepowerfilesowfa, skipto=2, header=false))
     optsowfa = transpose(readdlm(optpowerfilesowfa, skipstart=1, header=false))
-    winddf = DataFrame(CSV.File(winddatafile, datarow=2, header=false))
+    winddf = DataFrame(CSV.File(winddatafile, skipto=2, header=false))
 
     # name wind data columns 
     rename!(winddf,:Column1 => :d,:Column2 => :s,:Column3 => :p)
@@ -1167,7 +1188,7 @@ function vertical_slice(colors; savefigs=false, showfigs=false, fontsize=10)
     end
 end
 
-function generate_images_for_publication()
+function make_images()
 
     fontsize = 8
     colors = ["#BDB8AD", "#85C0F9", "#0F2080", "#F5793A", "#A95AA1", "#382119"]
@@ -1185,8 +1206,11 @@ function generate_images_for_publication()
     # layout(colors, fontsize)
     # opt_comparison_table(case="high-ti", tuning="sowfa-nrel")
     # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
     # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="improvement")
-    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="error")
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="improvement")
+    directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="error")
+    directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="error")
     
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="alldirections")
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="alldirections")
@@ -1199,11 +1223,11 @@ function generate_images_for_publication()
     # turbine_layouts(colors, case="low-ti-opt", showfigs=showfigs, savefigs=savefigs)
     # turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
 
-    turbine_layouts(colors, case="high-ti-opt", showfigs=showfigs, savefigs=savefigs)
+    # turbine_layouts(colors, case="high-ti-opt", showfigs=showfigs, savefigs=savefigs)
     # turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
 
     # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
 
-    windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
+    # windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
     
 end
