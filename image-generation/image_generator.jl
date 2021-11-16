@@ -262,6 +262,15 @@ function layout(colors, fontsize; showfigs=false, savefigs=false, image_director
 end
 
 function opt_comparison_table(;case="high-ti", tuning="sowfa-nrel")
+
+    if case == "high-ti"
+        layoutid = 83
+        n = 4
+    elseif case == "low-ti"
+        layoutid = 252
+        n = 2
+    end
+
     # flowfarm base data 
     basepowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout1-base.txt"
 
@@ -269,10 +278,10 @@ function opt_comparison_table(;case="high-ti", tuning="sowfa-nrel")
     basepowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les.txt"
 
     # flowfarm opt data 
-    optpowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout83-opt4.txt"
+    optpowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout$layoutid-opt$n.txt"
 
     # sowfa opt data 
-    optpowerfilesowfa = "image-data/power/SOWFAturbine-power-$case-les-opt4.txt"
+    optpowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les-opt$n.txt"
 
     # windrose data 
     winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
@@ -390,18 +399,28 @@ function opt_comparison_table(;case="high-ti", tuning="sowfa-nrel")
 
 end
 
-function directional_comparison_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison", case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
+function directional_comparison_figure(colors, fontsize; ax = nothing, showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison", case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
 
     if case == "low-ti"
         layout = 252
         n = 2
+        # layout = 385
+        # n = 3
+        sn = 2
+        
     elseif case == "high-ti"
         layout = 83
         n = 4
+        sn = 4
     end
+    image_name="directional-comparison-$case-$plottype"
+    # load wake data 
+    wakecountfilebase = "image-data/wakes/turbine-wakes-base-ff-$case-$tuning-layout1.txt"
+    wakecountfileopt = "image-data/wakes/turbine-wakes-opt$n-ff-$case-$tuning-layout$layout.txt"
 
     # flowfarm base data 
     basepowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout1-base.txt"
+    # basepowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout1-base-8ms.txt"
 
     # sowfa base data
     basepowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les.txt"
@@ -410,12 +429,14 @@ function directional_comparison_figure(colors, fontsize; showfigs=false, savefig
     optpowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout$layout-opt$n.txt"
 
     # sowfa opt data 
-    optpowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les-opt$n.txt"
+    optpowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les-opt$sn.txt"
 
     # windrose data 
     winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
 
     # read files to dataframes
+    basewcdf = DataFrame(CSV.File(wakecountfilebase, skipto=1, header=false))
+    optwcdf = DataFrame(CSV.File(wakecountfileopt, skipto=1, header=false))
     baseffdf = DataFrame(CSV.File(basepowerfileff, skipto=2, header=false))
     optffdf = DataFrame(CSV.File(optpowerfileff, skipto=2, header=false))
     basesowfadf = DataFrame(CSV.File(basepowerfilesowfa, skipto=2, header=false))
@@ -429,6 +450,8 @@ function directional_comparison_figure(colors, fontsize; showfigs=false, savefig
 
     nturbines = length(basesowfadf.Column1)
     println("nturbs = ", nturbines)
+
+    ndirections = length(winddf.d)
 
     # compute directional data 
     if normalize
@@ -448,7 +471,272 @@ function directional_comparison_figure(colors, fontsize; showfigs=false, savefig
     optdirpowersowfa = sum.(eachcol(optsowfadf))./normalization_factor_sowfa
 
     # create directional power bar charts
-    fig, ax = plt.subplots(1, figsize=[6,4])
+    compound = true
+    if ax === nothing
+        fig, ax = plt.subplots(1, figsize=[6,4])
+        compound=false
+    end
+    
+    if plottype == "power"
+        # ax.bar(winddf.d .- 5, optdirpowersowfa.*1E-6, label="SOWFA-Opt", width=10, color=colors[3])
+        ax.plot(winddf.d , optdirpowersowfa, color=colors[3], marker="o", linestyle="--")
+        compound || (case=="high-ti" && ax.annotate("SOWFA-optimized", (160, 65), color=colors[3]))
+        compound || (case=="low-ti" && ax.annotate("SOWFA-optimized", (160, 62), color=colors[3]))
+
+        # ax.bar(winddf.d .- 5, basedirpowersowfa.*1E-6, label="SOWFA-Base", width=10, color=colors[2])
+        ax.plot(winddf.d , basedirpowersowfa, color=colors[2], marker="o", linestyle="--")
+        compound || (case=="high-ti" && ax.annotate("SOWFA-base", (160, 55.5), color=colors[2]))
+        compound || (case=="low-ti" && ax.annotate("SOWFA-base", (160, 54.5), color=colors[2]))
+        
+        # ax.bar(winddf.d .+ 5, optdirpowerff.*1E-6, label="BP-Opt", width=10, color=colors[4])
+        ax.plot(winddf.d , optdirpowerff, color=colors[4], marker="o", linestyle="--")
+        compound || (case=="high-ti" && ax.annotate("BP-optimized", (160, 60), color=colors[4]))
+        compound || (case=="low-ti" && ax.annotate("BP-optimized", (160, 56.5), color=colors[4]))
+
+        # ax.bar(winddf.d .+ 5, basedirpowerff.*1E-6, label="BP-Base", width=10, color=colors[1])
+        ax.plot(winddf.d , basedirpowerff, color=colors[1], marker="o", linestyle="--")
+        compound || (case=="high-ti" && ax.annotate("BP-base", (160, 53), color=colors[1]))
+        compound || (case=="low-ti" && ax.annotate("BP-base", (160, 50), color=colors[1]))
+
+        # format the figure
+        compound || ax.set(xticks=winddf.d, ylim=[50, 70], xlabel="Direction (degrees)", ylabel="Directional power (MW)")
+        # ax.legend(frameon=false,ncol=2)
+    elseif plottype == "improvement"
+        
+        improvementsowfa = (optdirpowersowfa./basedirpowersowfa .- 1.0)*100
+        improvementff = (optdirpowerff./basedirpowerff .- 1.0)*100
+        # ax.bar(winddf.d .- 5, optdirpowersowfa.*1E-6, label="SOWFA-Opt", width=10, color=colors[3])
+        ax.plot(winddf.d , improvementsowfa, color=colors[3], marker="o", linestyle="--")
+        compound || (case=="high-ti" && ax.annotate("SOWFA", (100, 9), color=colors[3]))
+        compound || (case=="low-ti" && ax.annotate("SOWFA", (100, 10), color=colors[3]))
+
+        # ax.bar(winddf.d .- 5, basedirpowersowfa.*1E-6, label="SOWFA-Base", width=10, color=colors[2])
+        ax.plot(winddf.d , improvementff, color=colors[2], marker="o", linestyle="--")
+        compound || (case=="high-ti" && ax.annotate("BP", (160, 6), color=colors[2]))
+        compound || (case=="low-ti" && ax.annotate("BP", (160, 9), color=colors[2]))
+
+        # format the figure
+        compound || ax.set(xticks=winddf.d, ylim=[0, 15], xlabel="Direction (degrees)", ylabel="Directional Improvment (%)")
+
+    elseif plottype == "error"
+        errorbase = (basedirpowerff./basedirpowersowfa .- 1.0)*100
+        erroropt = (optdirpowerff./optdirpowersowfa .- 1.0)*100
+        # ax.bar(winddf.d .- 5, optdirpowersowfa.*1E-6, label="SOWFA-Opt", width=10, color=colors[3])
+        ax.plot(winddf.d , errorbase, color=colors[3], marker="o", linestyle="--", label="Base")
+        compound || (case=="high-ti" && ax.annotate("Base", (130, -4.5), color=colors[3]))
+        compound || (case=="low-ti" && ax.annotate("Base", (130, -0.5), color=colors[3]))
+
+        # ax.bar(winddf.d .- 5, basedirpowersowfa.*1E-6, label="SOWFA-Base", width=10, color=colors[2])
+        ax.plot(winddf.d , erroropt, color=colors[2], marker="o", linestyle="--", label="Optimized")
+        compound || (case=="high-ti" && ax.annotate("Optimized", (130, -8), color=colors[2]))
+        compound || (case=="low-ti" && ax.annotate("Optimized", (130, -2.6), color=colors[2]))
+
+        # format the figure
+        compound || ax.set(xticks=winddf.d, ylim=[-10, 2], xlabel="Direction (degrees)", ylabel="Directional Error (%)")
+        
+    elseif plottype == "wakeloss" || plottype == "annualenergyloss" || plottype == "annualenergylossincrease"
+
+        # find which turbines are not waked
+        # baseffarray = convert(Array{Float64, (nturbines, ndirections)}, baseffdf)
+        # optwcarray = convert(Array, optwcdf)
+        ideal_power_base_ff = zeros(ndirections)
+        ideal_power_opt_ff = zeros(ndirections)
+        ideal_power_base_sowfa = zeros(ndirections)
+        ideal_power_opt_sowfa = zeros(ndirections)
+
+        # find ideal power
+        for j = eachindex(winddf.d)
+            nb = 0
+            no = 0
+            for i = 1:nturbines
+                if basewcdf[i,j] == 0.0
+                    ideal_power_base_ff[j] += baseffdf[i,j]./normalization_factor_bp 
+                    ideal_power_base_sowfa[j] += basesowfadf[i,j]./normalization_factor_sowfa
+                    nb += 1
+                end
+                if optwcdf[i,j] == 0.0
+                    ideal_power_opt_ff[j] += optffdf[i,j]./normalization_factor_bp
+                    ideal_power_opt_sowfa[j] += optsowfadf[i,j]./normalization_factor_sowfa
+                    no += 1
+                end
+            end
+            ideal_power_base_ff[j] /= nb
+            ideal_power_base_sowfa[j] /= nb
+            ideal_power_opt_ff[j] /= no
+            ideal_power_opt_sowfa[j] /= no
+        end
+        
+        ideal_power_base_ff .*= nturbines
+        ideal_power_base_sowfa .*= nturbines
+        ideal_power_opt_ff .*= nturbines
+        ideal_power_opt_sowfa .*= nturbines
+
+        # get wake loss 
+        basewakelossff = 100.0.*(1.0 .- basedirpowerff./ideal_power_base_ff)
+        basewakelosssowfa = 100.0.*(1.0 .- basedirpowersowfa./ideal_power_base_sowfa)
+        optwakelossff = 100.0.*(1.0 .- optdirpowerff./ideal_power_opt_ff)
+        optwakelosssowfa = 100.0.*(1.0 .- optdirpowersowfa./ideal_power_opt_sowfa)
+
+        if plottype == "annualenergyloss"
+            ts = winddf.p*365*24.0.*1E-3.*(1/100)
+            basewakelossff .*= ts.*ideal_power_base_ff
+            basewakelosssowfa .*= ts.*ideal_power_base_sowfa
+            optwakelossff .*= ts.*ideal_power_opt_ff
+            optwakelosssowfa .*= ts.*ideal_power_opt_sowfa
+            ts = ts[6]
+        elseif plottype == "wakeloss"
+            ts = 1
+        elseif plottype == "annualenergylossincrease"
+            ts = winddf.p*365*24.0.*1E-3.*(1/100)
+            basewakelossff .*= ts.*ideal_power_base_ff
+            basewakelosssowfa .*= ts.*ideal_power_base_sowfa
+            optwakelossff .*= ts.*ideal_power_opt_ff
+            optwakelosssowfa .*= ts.*ideal_power_opt_sowfa
+            increaseff = -(optwakelossff - basewakelossff)
+            increasesowfa = -(optwakelosssowfa - basewakelosssowfa)
+            ts = ts[6]
+        end
+
+        # plot
+        if plottype == "annualenergylossincrease"
+            ax.plot(winddf.d , increasesowfa, color=colors[3], marker="o", linestyle="--", label="SOWFA")
+            ax.plot(winddf.d , increaseff, color=colors[2], marker="o", linestyle="--", label="BP")
+        else
+            ax.plot(winddf.d , optwakelosssowfa, color=colors[3], marker="o", linestyle="--", label="SOWFA-optimized")
+            if plottype == "annualenergyloss"
+                compound || (case=="high-ti" && ax.annotate("SOWFA-optimized", (210, 4.5), color=colors[3]))
+                compound || (case=="low-ti" && ax.annotate("SOWFA-optimized", (200, 6), color=colors[3]))
+            elseif plottype == "wakeloss"
+                compound || (case=="high-ti" && ax.annotate("SOWFA-optimized", (160, 5*ts), color=colors[3]))
+                compound || (case=="low-ti" && ax.annotate("SOWFA-optimized", (160, 10*ts), color=colors[3]))
+            elseif plottype == "annualenergylossincrease"
+
+            end
+            # ax.bar(winddf.d .- 5, basedirpowersowfa.*1E-6, label="SOWFA-Base", width=10, color=colors[2])
+            ax.plot(winddf.d , basewakelosssowfa, color=colors[2], marker="o", linestyle="--", label="SOWFA-base")
+            if plottype == "annualenergyloss"
+                compound || (case=="high-ti" && ax.annotate("SOWFA-base", (196, 10), color=colors[2]))
+                compound || (case=="low-ti" && ax.annotate("SOWFA-base", (280, 9.5), color=colors[2]))
+            else
+                compound || (case=="high-ti" && ax.annotate("SOWFA-base", (160, 14.5*ts), color=colors[2]))
+                compound || (case=="low-ti" && ax.annotate("SOWFA-base", (160, 19*ts), color=colors[2]))
+            end
+
+            # ax.bar(winddf.d .+ 5, optdirpowerff.*1E-6, label="BP-Opt", width=10, color=colors[4])
+            ax.plot(winddf.d , optwakelossff, color=colors[4], marker="o", linestyle="--", label="BP-optimized")
+            if plottype == "annualenergyloss"
+                compound || (case=="high-ti" && ax.annotate("BP-optimized", (190, 8.5), color=colors[4]))
+                compound || (case=="low-ti" && ax.annotate("BP-optimized", (195, 13), color=colors[4]))
+            else
+                compound || (case=="high-ti" && ax.annotate("BP-optimized", (160, 12.75*ts), color=colors[4]))
+                compound || (case=="low-ti" && ax.annotate("BP-optimized", (160, 17.0*ts), color=colors[4]))
+            end
+
+            # ax.bar(winddf.d .+ 5, basedirpowerff.*1E-6, label="BP-Base", width=10, color=colors[1])
+            ax.plot(winddf.d , basewakelossff, color=colors[1], marker="o", linestyle="--", label="BP-base")
+            if plottype == "annualenergyloss"
+                compound || (case=="high-ti" && ax.annotate("BP-base", (256, 12.3), color=colors[1]))
+                compound || (case=="low-ti" && ax.annotate("BP-base", (265, 15), color=colors[1]))
+            else
+                compound || (case=="high-ti" && ax.annotate("BP-base", (160, 20*ts), color=colors[1]))
+                compound || (case=="low-ti" && ax.annotate("BP-base", (160, 25.5*ts), color=colors[1]))
+            end
+
+            # format the figure
+            if plottype == "annualenergyloss"
+                compound || ax.set(xticks=winddf.d[1:2:end], yticks=collect(0:5:20), ylim=[0, 20], ylabel="Annual Directional Energy Loss (GW h)")
+            else
+                compound || ax.set(xticks=winddf.d[1:2:end], yticks=collect(0:5:30), ylim=[0, 30], ylabel="Directional Wake Loss (%)")
+            end
+            if !compound 
+                ax.set(xlabel="Direction (degrees)")
+            end
+        end
+    end
+
+    # remove upper and right bounding box
+    ax.spines["right"].set_visible(false)
+    ax.spines["top"].set_visible(false)
+
+    # make everything fit
+    plt.tight_layout()
+
+    # save figure
+    if showfigs
+        show()
+    end
+    if savefigs
+        plt.savefig(image_directory*image_name*".pdf", transparent=true)
+    end
+end
+
+function directional_comparison_figure_polar(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison", case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
+
+    if case == "low-ti"
+        layout = 252
+        n = 2
+    elseif case == "high-ti"
+        layout = 83
+        n = 4
+    end
+
+    # load wake data 
+    wakecountfilebase = "image-data/wakes/turbine-wakes-base-ff-$case-$tuning-layout1.txt"
+    wakecountfileopt = "image-data/wakes/turbine-wakes-opt$n-ff-$case-$tuning-layout$layout.txt"
+
+    # flowfarm base data 
+    basepowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout1-base.txt"
+
+    # sowfa base data
+    basepowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les.txt"
+
+    # flowfarm opt data 
+    optpowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout$layout-opt$n.txt"
+
+    # sowfa opt data 
+    optpowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les-opt$n.txt"
+
+    # windrose data 
+    winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
+
+    # read files to dataframes
+    basewcdf = DataFrame(CSV.File(wakecountfilebase, skipto=1, header=false))
+    optwcdf = DataFrame(CSV.File(wakecountfileopt, skipto=1, header=false))
+    baseffdf = DataFrame(CSV.File(basepowerfileff, skipto=2, header=false))
+    optffdf = DataFrame(CSV.File(optpowerfileff, skipto=2, header=false))
+    basesowfadf = DataFrame(CSV.File(basepowerfilesowfa, skipto=2, header=false))
+    optsowfadf = DataFrame(CSV.File(optpowerfilesowfa, skipto=2, header=false))
+    winddf = DataFrame(CSV.File(winddatafile, skipto=2, header=false))
+
+    println("compare")
+    println(sum.(eachcol(baseffdf .- basesowfadf)))
+    # name wind data columns 
+    rename!(winddf,:Column1 => :d,:Column2 => :s,:Column3 => :p)
+
+    nturbines = length(basesowfadf.Column1)
+    println("nturbs = ", nturbines)
+
+    ndirections = length(winddf.d)
+
+    # compute directional data 
+    if normalize
+        normalization_factor_sowfa = nturbines*maximum(maximum(eachrow(basesowfadf)))
+        normalization_factor_bp = nturbines*maximum(maximum(eachrow(baseffdf)))
+    else
+        normalization_factor_sowfa = 1E6
+        normalization_factor_bp = 1E6
+    end
+
+    println(normalization_factor_sowfa)
+    println(normalization_factor_bp)
+
+    basedirpowerff = sum.(eachcol(baseffdf))./normalization_factor_bp
+    optdirpowerff = sum.(eachcol(optffdf))./normalization_factor_bp
+    basedirpowersowfa = sum.(eachcol(basesowfadf))./normalization_factor_sowfa
+    optdirpowersowfa = sum.(eachcol(optsowfadf))./normalization_factor_sowfa
+
+    # create directional power bar charts
+    fig, ax = plt.subplots(1, figsize=[6,4], subplot_kw=Dict("projection" => "polar"))
 
     if plottype == "power"
         # ax.bar(winddf.d .- 5, optdirpowersowfa.*1E-6, label="SOWFA-Opt", width=10, color=colors[3])
@@ -508,12 +796,92 @@ function directional_comparison_figure(colors, fontsize; showfigs=false, savefig
         # format the figure
         ax.set(xticks=winddf.d, ylim=[-10, 2], xlabel="Direction (degrees)", ylabel="Directional Error (%)")
         ax.legend(frameon=false,ncol=2)
+    elseif plottype == "wakeloss" || plottype == "annualenergyloss"
+
+        # find which turbines are not waked
+        # baseffarray = convert(Array{Float64, (nturbines, ndirections)}, baseffdf)
+        # optwcarray = convert(Array, optwcdf)
+        ideal_power_base_ff = zeros(ndirections)
+        ideal_power_opt_ff = zeros(ndirections)
+        ideal_power_base_sowfa = zeros(ndirections)
+        ideal_power_opt_sowfa = zeros(ndirections)
+
+        # find ideal power
+        for j = eachindex(winddf.d)
+            nb = 0
+            no = 0
+            for i = 1:nturbines
+                if basewcdf[i,j] == 0.0
+                    ideal_power_base_ff[j] += baseffdf[i,j]./normalization_factor_bp 
+                    ideal_power_base_sowfa[j] += basesowfadf[i,j]./normalization_factor_sowfa
+                    nb += 1
+                end
+                if optwcdf[i,j] == 0.0
+                    ideal_power_opt_ff[j] += optffdf[i,j]./normalization_factor_bp
+                    ideal_power_opt_sowfa[j] += optsowfadf[i,j]./normalization_factor_sowfa
+                    no += 1
+                end
+            end
+            ideal_power_base_ff[j] /= nb
+            ideal_power_base_sowfa[j] /= nb
+            ideal_power_opt_ff[j] /= no
+            ideal_power_opt_sowfa[j] /= no
+        end
+        
+        ideal_power_base_ff .*= nturbines
+        ideal_power_base_sowfa .*= nturbines
+        ideal_power_opt_ff .*= nturbines
+        ideal_power_opt_sowfa .*= nturbines
+
+        # get wake loss 
+        basewakelossff = 100.0.*(1.0 .- basedirpowerff./ideal_power_base_ff)
+        basewakelosssowfa = 100.0.*(1.0 .- basedirpowersowfa./ideal_power_base_sowfa)
+        optwakelossff = 100.0.*(1.0 .- optdirpowerff./ideal_power_opt_ff)
+        optwakelosssowfa = 100.0.*(1.0 .- optdirpowersowfa./ideal_power_opt_sowfa)
+
+        if plottype == "annualenergyloss"
+            ts = winddf.p*365*24.0.*1E-3.*(1/100)
+            basewakelossff .*= ts.*ideal_power_base_ff
+            basewakelosssowfa .*= ts.*ideal_power_base_sowfa
+            optwakelossff .*= ts.*ideal_power_opt_ff
+            optwakelosssowfa .*= ts.*ideal_power_opt_sowfa
+            ts = ts[6]
+        end
+
+        # make data a complete loop
+        basewakelossff = [basewakelossff; basewakelossff[1]]
+        basewakelosssowfa = [basewakelosssowfa; basewakelosssowfa[1]]
+        optwakelossff = [optwakelossff; optwakelossff[1]]
+        optwakelosssowfa = [optwakelosssowfa; optwakelosssowfa[1]]
+        push!(winddf, first(winddf))
+
+        if plottype == "annualenergyloss"
+            fticks = 0:5:20
+            units = "GWh"
+        elseif plottype == "wakeloss"
+            fticks = 0:5:25
+            units = "%"
+        end
+        # plot
+        d2r = pi/180.0
+        ff.plotwindrose!(ax, winddf.d*d2r, optwakelosssowfa, plotcommand="plot", kwargs=(color=colors[3], marker="o", linestyle="--", label="SOWFA-optimized"))
+        
+        ff.plotwindrose!(ax, winddf.d*d2r, basewakelosssowfa, plotcommand="plot", kwargs=(color=colors[2], marker="o", linestyle="--", label="SOWFA-base"))
+        
+        ff.plotwindrose!(ax, winddf.d*d2r, optwakelossff, plotcommand="plot", kwargs=(color=colors[4], marker="o", linestyle="--", label="BP-optimized"))
+        
+        ff.plotwindrose!(ax, winddf.d*d2r, basewakelossff, plotcommand="plot", fticks=fticks, units=units, kwargs=(color=colors[1], marker="o", linestyle="--", label="BP-base"))
+        
+        ax.legend(frameon=false,ncol=1,loc=0,bbox_to_anchor=(1, 1))
+        ax.set_axisbelow(false)
     end
+
     # remove upper and right bounding box
-    ax.spines["right"].set_visible(false)
-    ax.spines["top"].set_visible(false)
+    # ax.spines["right"].set_visible(false)
+    # ax.spines["top"].set_visible(false)
 
     # make everything fit
+
     plt.tight_layout()
 
     # save figure
@@ -523,6 +891,139 @@ function directional_comparison_figure(colors, fontsize; showfigs=false, savefig
     if savefigs
         plt.savefig(image_directory*image_name*".pdf", transparent=true)
     end
+end
+
+# create compound figure with all directional results 
+function directional_comparison_figure_compound(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison")
+
+    fig, ax = plt.subplots(3, 2, figsize=[8,9], sharex=true, sharey="row")
+
+    # power
+    directional_comparison_figure(colors, fontsize, ax=ax[1,1], case="high-ti", tuning="sowfa-nrel", plottype="power")
+    ax[1,1].annotate("SOWFA-optimized", (160, 62), color=colors[3])
+    ax[1,1].annotate("SOWFA-base", (150, 55.85), color=colors[2])
+    ax[1,1].annotate("BP-optimized", (160, 60), color=colors[4])
+    ax[1,1].annotate("BP-base", (160, 52.75), color=colors[1])
+    directional_comparison_figure(colors, fontsize, ax=ax[1,2], case="low-ti", tuning="sowfa-nrel", plottype="power")
+    ax[1,2].annotate("SOWFA-optimized", (160, 61), color=colors[3])
+    ax[1,2].annotate("SOWFA-base", (150, 55), color=colors[2])
+    ax[1,2].annotate("BP-optimized", (160, 57.5), color=colors[4])
+    ax[1,2].annotate("BP-base", (80, 53), color=colors[1])
+        
+    # Error
+    directional_comparison_figure(colors, fontsize, ax=ax[2,1], case="high-ti", tuning="sowfa-nrel", plottype="error")
+    ax[2,1].annotate("Base", (130, -4.5), color=colors[3])
+    ax[2,1].annotate("Optimized", (130, -6.5), color=colors[2])
+    directional_comparison_figure(colors, fontsize, ax=ax[2,2], case="low-ti", tuning="sowfa-nrel", plottype="error")
+    ax[2,2].annotate("Base", (130, -0.4), color=colors[3])
+    ax[2,2].annotate("Optimized", (130, -2.7), color=colors[2])
+
+    # Improvement
+    directional_comparison_figure(colors, fontsize, ax=ax[3,1], case="high-ti", tuning="sowfa-nrel", plottype="improvement")
+    ax[3,1].annotate("SOWFA", (91, 9), color=colors[3])
+    ax[3,1].annotate("BP", (160, 6.8), color=colors[2])
+    directional_comparison_figure(colors, fontsize, ax=ax[3,2], case="low-ti", tuning="sowfa-nrel", plottype="improvement")
+    ax[3,2].annotate("SOWFA", (83, 10), color=colors[3])
+    ax[3,2].annotate("BP", (160, 8.8), color=colors[2])
+
+    # add x label 
+    ax[3,1].set(xlabel="Direction (degrees)", xticks=10:60:360)
+    ax[3,2].set(xlabel="Direction (degrees)", xticks=10:60:360)
+
+    # add y label 
+    ax[1,1].set(ylabel="Power (GW h)", xticks=10:60:360, yticks=50:2:66, ylim=[50,66])
+    ax[1,2].set(xticks=10:60:360, yticks=50:2:66)
+    ax[2,1].set(ylabel="Power Error (%)", xticks=10:60:360, yticks=-10:2:2, ylim=[-10,2])
+    ax[2,2].set(xticks=10:60:360, yticks=-10:2:2)
+    ax[3,1].set(ylabel="Power Improvement (%)", xticks=10:60:360, yticks=0:2:16, ylim=[0,16])
+    ax[3,1].set(xticks=10:60:360, yticks=0:2:16)
+
+    # add column titles
+    ax[1,1].set(title="High TI")
+    ax[1,2].set(title="Low TI")
+
+    # add subfigure labels
+    i=97
+    for axi in [ax[1,:]; ax[2,:]; ax[3,:]]
+        axi.annotate("($(Char(i)))", xy=(0.05, 0.05), xycoords="axes fraction")
+        i += 1
+    end
+    plt.tight_layout()
+
+    # save figure
+    if showfigs
+        plt.show()
+    end
+    if savefigs
+        plt.savefig(image_directory*image_name*"power"*".pdf", transparent=true)
+    end
+
+    fig, ax = plt.subplots(3, 2, figsize=[8,9], sharex="col", sharey="row")
+    # Wake Loss
+    directional_comparison_figure(colors, fontsize, ax=ax[1,1], case="high-ti", tuning="sowfa-nrel", plottype="wakeloss")
+    ax[1,1].annotate("SOWFA-optimized", (21, 5.5), color=colors[3])
+    ax[1,1].annotate("SOWFA-base", (155, 13.5), color=colors[2])
+    ax[1,1].annotate("BP-optimized", (49.6, 9.9), color=colors[4])
+    ax[1,1].annotate("BP-base", (97, 18), color=colors[1])
+    directional_comparison_figure(colors, fontsize, ax=ax[1,2], case="low-ti", tuning="sowfa-nrel", plottype="wakeloss")
+    ax[1,2].annotate("SOWFA-optimized", (160, 9.2), color=colors[3])
+    ax[1,2].annotate("SOWFA-base", (170, 18), color=colors[2])
+    ax[1,2].annotate("BP-optimized", (113, 16), color=colors[4])
+    ax[1,2].annotate("BP-base", (95, 22), color=colors[1])
+
+    # Annual Directional Energy Loss
+    directional_comparison_figure(colors, fontsize, ax=ax[2,1], case="high-ti", tuning="sowfa-nrel", plottype="annualenergyloss")
+    directional_comparison_figure(colors, fontsize, ax=ax[2,2], case="low-ti", tuning="sowfa-nrel",  plottype="annualenergyloss")
+
+    # Change in Directional Energy Loss
+    directional_comparison_figure(colors, fontsize, ax=ax[3,1], case="high-ti", tuning="sowfa-nrel", plottype="annualenergylossincrease")
+    ax[3,1].annotate("SOWFA", (130, 5), color=colors[3])
+    ax[3,1].annotate("BP", (212, 5), color=colors[2])
+    directional_comparison_figure(colors, fontsize, ax=ax[3,2], case="low-ti", tuning="sowfa-nrel",  plottype="annualenergylossincrease")
+    ax[3,2].annotate("SOWFA", (122, 5), color=colors[3])
+    ax[3,2].annotate("BP", (199, 5), color=colors[2])
+
+    # add x labels and ticks
+    ax[1,1].set(xticks=10:60:360)
+    ax[1,2].set(xticks=10:60:360)
+    ax[2,1].set(xticks=10:60:360)
+    ax[2,2].set(xticks=10:60:360)
+    ax[3,1].set(xlabel="Direction (degrees)", xticks=10:60:360)
+    ax[3,2].set(xlabel="Direction (degrees)", xticks=10:60:360)
+
+    # add y labels and ticks
+    ax[1,1].set(ylabel="Wake Loss (%)", yticks=0:5:30, ylim=[0, 30])
+    ax[1,2].set(yticks=0:5:30, ylim=[0, 30])
+    ax[2,1].set(ylabel="Annual Energy Loss (GW h)", yticks=0:5:20, ylim=[0, 20])
+    ax[2,2].set(yticks=0:5:20, ylim=[0, 20])
+    ax[3,1].set(ylabel="Annual Energy Improvement (GW h)", yticks=0:2:12, ylim=[0, 12])
+    ax[3,2].set(yticks=0:2:12, ylim=[0, 12])
+
+    # add legend
+    ax[2,1].legend(frameon=false)
+    ax[2,2].legend(frameon=false)
+
+    # add column titles
+    ax[1,1].set(title="High TI")
+    ax[1,2].set(title="Low TI")
+
+    # add subfigure labels
+    i=97
+    for axi in [ax[1,:]; ax[2,:]; ax[3,:]]
+        axi.annotate("($(Char(i)))", xy=(0.05, 0.05), xycoords="axes fraction")
+        i += 1
+    end
+
+    plt.tight_layout()
+
+    # save figure
+    if showfigs
+        plt.show()
+    end
+    if savefigs
+        plt.savefig(image_directory*image_name*"wakeloss"*".pdf", transparent=true)
+    end
+
 end
 
 function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="turbine-comparison", case="low-ti", tuning="alldirections")
@@ -623,9 +1124,16 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
         end
     end
 
+    if case == "high-ti"
+        layoutid = 83
+        n = 4
+    elseif case == "low-ti"
+        layoutid = 252
+        n = 2
+    end
 
     # load wake data 
-    wakecountfile = "image-data/power/turbine_wakes.txt"
+    wakecountfile = "image-data/wakes/turbine-wakes-opt$n-ff-$case-$tuning-layout$layoutid.txt"
     
     # flowfarm base data 
     basepowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout1-base.txt"
@@ -634,10 +1142,10 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
     basepowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les.txt"
 
     # flowfarm opt data 
-    optpowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout83-opt4.txt"
+    optpowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout$layoutid-opt$n.txt"
     
     # sowfa opt data 
-    optpowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les-opt4.txt"
+    optpowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les-opt$n.txt"
 
     # windrose data 
     winddatafile = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
@@ -977,7 +1485,8 @@ function turbine_layouts(colors ;rotor_diameter=126.4,les_side=5000,
 
     # load data
     if case == "low-ti-opt"
-        datafile = "image-data/layouts/opt/optresultsmilestone.csv"
+        # datafile = "image-data/layouts/opt/optresultsmilestone.csv"
+        datafile = "image-data/layouts/opt/low-ti-sowfa-nrel-opt2-layout252-aec-wec.csv"
         data = readdlm(datafile, ',', skipstart=1).+les_radius
     elseif case == "low-ti"
         datafile = "../src/inputfiles/farms/layout_38turb_round.txt"
@@ -1204,19 +1713,15 @@ function make_images()
     # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti")
     # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
     # layout(colors, fontsize)
+
     # opt_comparison_table(case="high-ti", tuning="sowfa-nrel")
-    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
-    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
-    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="improvement")
-    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="improvement")
-    directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="error")
-    directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="error")
+    # opt_comparison_table(case="low-ti", tuning="sowfa-nrel")
     
-    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="alldirections")
-    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="alldirections")
-    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="all")
-    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="all")
+    # directional_comparison_figure_compound(colors, fontsize, showfigs=showfigs, savefigs=savefigs)
+
+    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel")
     # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel")
+
     # horns_rev_rows_verification_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
     # horns_rev_direction_verification_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
 
@@ -1231,3 +1736,19 @@ function make_images()
     # windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
     
 end
+
+
+    ############# obsolete/not used #############
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="improvement")
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="improvement")
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="error")
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="error")
+    
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="wakeloss")
+    # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="wakeloss")
+    
+    # directional_comparison_figure_polar(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="annualenergyloss")
+    # directional_comparison_figure_polar(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="annualenergyloss")
+    

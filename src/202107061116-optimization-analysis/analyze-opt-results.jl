@@ -7,6 +7,7 @@ using Statistics
 include("../202105111413-SOWFA-comparison/202105111413-sowfa-round-farm-comparison.jl")
 # include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-low-ti-alldirections.jl")
 include("../inputfiles/model-sets/round-farm-38-turbs-12-dirs-opt.jl")
+include("../202106021113-layouts-for-nrel/base_layouts_for_nrel.jl")
 
 diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, cut_in_speed, 
     cut_out_speed, rated_speed, rated_power, generator_efficiency, nrotorpoints, 
@@ -15,17 +16,22 @@ diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, 
     ct_models, wind_shear_model, sorted_turbine_index, wind_resource, wakedeficitmodel, 
     wakedeflectionmodel, wakecombinationmodel, localtimodel, model_set = wind_farm_setup(38)
 
-function load_results(case, tuning; wec=true, dir="")
+function load_results(case, tuning; wec=true, dir="", n=nothing)
     if dir==""
         dir = "opt-$case"
     end
+    if n === nothing 
+        n = ""
+    else
+        n = "-$n"
+    end
     prepath = "/Users/jaredthomas/OneDrive - Brigham Young University/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/"
     if wec && case != "low-ti"
-        datafilename = prepath*"$dir-wec/opt-overall-results-$case-$tuning.csv"
+        datafilename = prepath*"$dir-wec$n/opt-overall-results-$case-$tuning.csv"
     elseif !wec && case != "low-ti"
-        datafilename = prepath*"$dir-no-wec/opt-overall-results-$case-$tuning.csv"
+        datafilename = prepath*"$dir-no-wec$n/opt-overall-results-$case-$tuning.csv"
     elseif wec && case == "low-ti"
-        datafilename = prepath*"$dir-wec/opt-overall-results-$case-$tuning-startrun1-nruns400.csv"
+        datafilename = prepath*"$dir-wec$n/opt-overall-results-$case-$tuning-startrun1-nruns400.csv"
     end
     df = DataFrame(CSV.File(datafilename, header=true))
 
