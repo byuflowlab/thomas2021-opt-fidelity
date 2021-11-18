@@ -931,7 +931,7 @@ function directional_comparison_figure_compound(colors, fontsize; showfigs=false
     ax[3,2].set(xlabel="Direction (degrees)", xticks=10:60:360)
 
     # add y label 
-    ax[1,1].set(ylabel="Power (GW h)", xticks=10:60:360, yticks=50:2:66, ylim=[50,66])
+    ax[1,1].set(ylabel="Power (MW)", xticks=10:60:360, yticks=50:2:66, ylim=[50,66])
     ax[1,2].set(xticks=10:60:360, yticks=50:2:66)
     ax[2,1].set(ylabel="Power Error (%)", xticks=10:60:360, yticks=-10:2:2, ylim=[-10,2])
     ax[2,2].set(xticks=10:60:360, yticks=-10:2:2)
@@ -1026,9 +1026,9 @@ function directional_comparison_figure_compound(colors, fontsize; showfigs=false
 
 end
 
-function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="turbine-comparison", case="low-ti", tuning="alldirections")
+function turbine_comparison_figures(colors, fontsize; ax1=nothing, ax2=nothing, showfigs=false, savefigs=false, image_directory="images/", image_name="turbine-comparison", case="low-ti", tuning="alldirections")
     
-    function plot_turbine_heatmap(data, winddirections, vmin, vmax; wake_count=nothing)
+    function plot_turbine_heatmap(data, winddirections, vmin, vmax; ax=nothing, wake_count=nothing, drawcbar=true)
 
         # number of turbines in the farm
         nturbines = 38
@@ -1037,7 +1037,9 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
         ndirections = length(winddirections)
 
         # intialize figure
-        fig, ax = plt.subplots(figsize=(8,4))
+        if ax === nothing
+            fig, ax = plt.subplots(figsize=(8,4))
+        end
 
         # set tick locations and labels
         ticks = vmin:4:vmax
@@ -1076,7 +1078,8 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
 
         # create heatmap
         im, cbar = heatmap(data, rowlabels, 1:nturbines, ax=ax, edgecolors = edgecolors,
-                cbarlabel="Turbine power error as percent of maximum SOWFA turbine power", cbar_kw=d)
+                cbarlabel="Turbine power error as percent of maximum SOWFA turbine power", cbar_kw=d,
+                use_cbar=drawcbar)
 
         # remove upper and right bounding box
         ax.spines["right"].set_visible(false)
@@ -1122,6 +1125,12 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
         
             return normalized_errors
         end
+    end
+
+    if ax1 !== nothing
+        drawcbar2 = false
+    else
+        drawcbar2 = true
     end
 
     if case == "high-ti"
@@ -1186,10 +1195,12 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
         # println(sumterm)
     end
     # plot error on heatmap
-    plot_turbine_heatmap(data, winddf.d, vmin, vmax)
+    plot_turbine_heatmap(data, winddf.d, vmin, vmax; ax=ax1)
 
     if savefigs
-        plt.savefig(image_directory*image_name*"-"*case*"-"*tuning*".pdf", transparent=true)
+        if !drawcbar2
+            plt.savefig(image_directory*image_name*"-"*case*"-"*tuning*".pdf", transparent=true)
+        end
     end
 
     # calculate turbine errors for opt case
@@ -1198,10 +1209,12 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
     data = convert.(Int64, round.(turberror.*100, digits=0))
 
     # plot error on heatmap
-    plot_turbine_heatmap(data, winddf.d, vmin, vmax)
+    plot_turbine_heatmap(data, winddf.d, vmin, vmax, ax=ax2, drawcbar=drawcbar2)
 
     if savefigs
-        plt.savefig(image_directory*image_name*"-"*case*"-"*tuning*"-opt.pdf", transparent=true)
+        if !drawcbar2
+            plt.savefig(image_directory*image_name*"-"*case*"-"*tuning*"-opt.pdf", transparent=true)
+        end
     end
 
     # save figure
@@ -1209,6 +1222,43 @@ function turbine_comparison_figures(colors, fontsize; showfigs=false, savefigs=f
         plt.show()
     end
 
+end
+
+function turbine_comparison_figures_compound(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="turbine-comparison", case="low-ti", tuning="alldirections")
+    
+    # generate figure
+    fig, ax = plt.subplots(2,1,figsize=(8,8))
+    
+    # populate figure
+    turbine_comparison_figures(colors, fontsize, ax1=ax[1], ax2=ax[2], savefigs=savefigs, showfigs=showfigs, case=case, tuning="sowfa-nrel")
+    
+    # format figure
+    ax[1].set(ylabel="Wind Direction (degrees)", xlabel="Turbine Index")
+    ax[1].xaxis.set_label_position("top") 
+    if case == "high-ti"
+        ax[1].set_title("(a) High TI Base")
+    elseif case == "low-ti"
+        ax[1].set_title("(a) Low TI Base")
+    end
+    
+    ax[2].set(ylabel="Wind Direction (degrees)", xlabel="Turbine Index")
+    ax[2].xaxis.set_label_position("top") 
+    if case == "high-ti"
+        ax[2].set_title("(b) High TI Optimized")
+    elseif case == "low-ti"
+        ax[2].set_title("(b) Low TI Optimized")
+    end
+
+    plt.tight_layout()
+
+    if savefigs
+        plt.savefig(image_directory*image_name*"-"*case*"-"*tuning*"-compound.pdf", transparent=true)
+    end
+
+    # save figure
+    if showfigs
+        plt.show()
+    end
 end
 
 function horns_rev_rows_verification_figure(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="horns-rev-rows")
@@ -1476,23 +1526,26 @@ function sunflower_points(n, alpha=1.0)
     return x, y
 end
 
-function turbine_layouts(colors ;rotor_diameter=126.4,les_side=5000,
+function turbine_layouts(colors ;ax=nothing, rotor_diameter=126.4,les_side=5000,
                                     c1="C0",c2="C1",color="C0",fontsize=10,
-                                    case="low-ti-opt", showfigs=false, savefigs=false)
+                                    case="low-ti", tuning="sowfa-nrel", showfigs=false, savefigs=false,
+                                    iter="base", layoutid=1, n=1, gen="angle-each-circle",
+                                    compound=true, annotate=false)
 
     les_radius = les_side/2.0
     boundary_radius = les_radius - 500.0 - rotor_diameter/2.0
 
     # load data
-    if case == "low-ti-opt"
-        # datafile = "image-data/layouts/opt/optresultsmilestone.csv"
-        datafile = "image-data/layouts/opt/low-ti-sowfa-nrel-opt2-layout252-aec-wec.csv"
-        data = readdlm(datafile, ',', skipstart=1).+les_radius
-    elseif case == "low-ti"
+    if iter == "base"
         datafile = "../src/inputfiles/farms/layout_38turb_round.txt"
         data = readdlm(datafile, skipstart=1).*rotor_diameter .+ (les_radius - boundary_radius)
-    elseif case == "high-ti-opt"
-        datafile = "image-data/layouts/opt/high-ti-sowfa-nrel-opt4-layout83-aec-wec.csv"
+    elseif iter == "start"
+        # datafile = "image-data/layouts/opt/optresultsmilestone.csv"
+        datafile = "../src/inputfiles/farms/startinglayouts/$gen/nTurbs38_spacing5.0_layout_$layoutid.txt"
+        data = readdlm(datafile, ',', skipstart=1).*rotor_diameter .+ (les_radius)
+    elseif iter == "opt"
+        # datafile = "image-data/layouts/opt/optresultsmilestone.csv"
+        datafile = "image-data/layouts/opt/$case-$tuning-opt$n-layout$layoutid-aec-wec.csv"
         data = readdlm(datafile, ',', skipstart=1) .+ les_radius
     else
         ErrorException("Case not available")
@@ -1501,16 +1554,26 @@ function turbine_layouts(colors ;rotor_diameter=126.4,les_side=5000,
     xlocs = data[:,1]
     ylocs = data[:,2]
 
-    plt.figure(figsize=(5,3))
-    ax = plt.gca()
+    if ax === nothing
+        plt.figure(figsize=(5,3))
+        ax = plt.gca()
+    end
+    
+    if !compound
+        ax.axes.xaxis.set_visible(false)
+        ax.axes.yaxis.set_visible(false)
 
-    ax.axes.xaxis.set_visible(false)
-    ax.axes.yaxis.set_visible(false)
+        ax.spines["top"].set_visible(false)
+        ax.spines["bottom"].set_visible(false)
+        ax.spines["left"].set_visible(false)
+        ax.spines["right"].set_visible(false)
+        plt.subplots_adjust(left=0.15,bottom=0.12,top=0.99,right=0.6)
+    end
+    if annotate == true
+        ax.annotate("Farm boundary", (les_radius/2, les_radius-boundary_radius-rotor_diameter*3.0), color=colors[2])
+        ax.annotate("LES domain", (0, les_side+rotor_diameter/2.0), color=colors[4])
 
-    ax.spines["top"].set_visible(false)
-    ax.spines["bottom"].set_visible(false)
-    ax.spines["left"].set_visible(false)
-    ax.spines["right"].set_visible(false)
+    end
 
     # xaxis.set_visible(False)
 
@@ -1519,12 +1582,10 @@ function turbine_layouts(colors ;rotor_diameter=126.4,les_side=5000,
     cy = 2500
     lw = 0.75
     plot_circle(cx,cy,boundary_radius,colors[2],ax,linestyle="--",linewidth=lw,label="Farm boundary")
-    ax.annotate("Farm boundary", (les_radius, les_radius-boundary_radius-rotor_diameter*2.5), color=colors[2])
-
+    
     les_x = [0,les_side,les_side,0,0]
     les_y = [0,0,les_side,les_side,0]
     ax.plot(les_x,les_y,"-",color=colors[4],linewidth=lw,label="LES domain")
-    ax.annotate("LES domain", (0, les_side+rotor_diameter/2.0), color=colors[4])
     
     nturbs = length(xlocs)
     for i=1:nturbs
@@ -1541,12 +1602,68 @@ function turbine_layouts(colors ;rotor_diameter=126.4,les_side=5000,
     # ax.set_xlabel("Turbine X Position, m",fontsize=fontsize)
     # ax.set_ylabel("Turbine Y Position, m",fontsize=fontsize)
     
-    plt.subplots_adjust(left=0.15,bottom=0.12,top=0.99,right=0.6)
+   
 
     plt.tight_layout()
 
     if savefigs
         plt.savefig("images/"*case*"-layout.pdf", transparent=true)
+    end
+
+    # save figure
+    if showfigs
+        plt.show()
+    end
+end
+
+function turbine_layouts_compound(colors ;rotor_diameter=126.4,les_side=5000,
+    c1="C0",c2="C1",color="C0",fontsize=10,
+    case="low-ti-opt", showfigs=false, savefigs=false)
+
+    fig, ax = plt.subplots(2,3, figsize=(8,6), gridspec_kw=Dict("wspace" => 0.05, "hspace"=>0.0))
+
+    # high ti
+    turbine_layouts(colors ;ax=ax[1,1], fontsize=fontsize, iter="base", layoutid=1, case="high-ti", annotate=true)
+    turbine_layouts(colors ;ax=ax[1,2], fontsize=fontsize, iter="start", layoutid=83, n=4, case="high-ti")
+    turbine_layouts(colors ;ax=ax[1,3], fontsize=fontsize, iter="opt", layoutid=83, n=4, case="high-ti")
+    ax[1,1].set(ylabel="High TI")
+    
+    # low ti
+    turbine_layouts(colors ;ax=ax[2,1], fontsize=fontsize, iter="base", layoutid=1, case="low-ti")
+    turbine_layouts(colors ;ax=ax[2,2], fontsize=fontsize, iter="start", layoutid=252, n=2, case="low-ti")
+    turbine_layouts(colors ;ax=ax[2,3], fontsize=fontsize, iter="opt", layoutid=252, n=2, case="low-ti")
+    ax[2,1].set(ylabel="Low TI")
+
+    # add overhead labels 
+    ax[1,1].set(title="Base")
+    ax[1,2].set(title="Start")
+    ax[1,3].set(title="Optimized")
+
+    # remove spines
+    for axi in [ax[1,:]; ax[2,:]]
+        axi.axes.xaxis.set_visible(false)
+        # axi.axes.yaxis.set_visible(false)
+        axi.tick_params(left=false, labelleft=false)
+        #remove background patch (only needed for non-white background)
+        axi.patch.set_visible(false)
+
+        axi.spines["top"].set_visible(false)
+        axi.spines["bottom"].set_visible(false)
+        axi.spines["left"].set_visible(false)
+        axi.spines["right"].set_visible(false)
+    end
+
+    # add subfigure labels
+    i=97
+    for axi in [ax[1,:]; ax[2,:]]
+        axi.annotate("($(Char(i)))", xy=(0.1, 0.1), xycoords="axes fraction")
+        i += 1
+    end
+
+    plt.tight_layout()
+
+    if savefigs
+        plt.savefig("images/layouts-compound.pdf", transparent=true)
     end
 
     # save figure
@@ -1697,6 +1814,60 @@ function vertical_slice(colors; savefigs=false, showfigs=false, fontsize=10)
     end
 end
 
+function plot_results_distribution(colors; savefigs=false, showfigs=false, fontsize=10)
+
+    # load data 
+    high_ti_data = DataFrame(CSV.File("./image-data/power/multi-start-distributions/results-distribution-high-ti-4.csv", skipto=2))
+    low_ti_data = DataFrame(CSV.File("./image-data/power/multi-start-distributions/results-distribution-low-ti-1.csv", skipto=2))
+    
+    # generate figure
+    fig, ax = plt.subplots(1,2, sharey=true, sharex=true, figsize=(8,3))
+
+    # plot histogram 
+    bins = 400:1:500
+    ax[1].hist(high_ti_data[!, :aepib], label="Start AEP", color=colors[1],bins=bins)
+    ax[1].hist(high_ti_data[!, :aepfb], label="Optimized AEP", color=colors[4],bins=bins)
+
+    ax[2].hist(low_ti_data[!, :aepib]*1E-1, label="Start AEP", color=colors[2],bins=bins)
+    ax[2].hist(low_ti_data[!, :aepfb]*1E-1, label="Optimized AEP", color=colors[3],bins=bins)
+    println(minimum([minimum(high_ti_data[!, :aepib]),minimum(high_ti_data[!, :aepfb]),minimum(low_ti_data[!, :aepib]*1E-1),minimum(low_ti_data[!, :aepfb]*1E-1)]))
+    println(maximum([maximum(high_ti_data[!, :aepib]),maximum(high_ti_data[!, :aepfb]),maximum(low_ti_data[!, :aepib]*1E-1),maximum(low_ti_data[!, :aepfb]*1E-1)]))
+    # format histogram
+    ax[1].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", ylabel="Count", title="(a) High TI")
+    ax[2].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", title="(b) Low TI")
+    ax[1].legend(frameon=false)
+    ax[2].legend(frameon=false, loc="upper left")
+
+    # removes spines
+    ax[1].spines["right"].set_visible(false)
+    ax[1].spines["top"].set_visible(false)
+    ax[1].spines["bottom"].set_visible(true)
+    ax[1].spines["left"].set_visible(true)
+
+    ax[2].spines["right"].set_visible(false)
+    ax[2].spines["top"].set_visible(false)
+    ax[2].spines["bottom"].set_visible(true)
+    ax[2].spines["left"].set_visible(false)
+    ax[2].tick_params(
+    axis="y",          # changes apply to the x-axis
+    which="both",      # both major and minor ticks are affected
+    left=false,      # ticks along the bottom edge are off
+    right=false,         # ticks along the top edge are off
+    labelleft=false) # labels along the bottom edge are off
+
+    plt.tight_layout()
+
+    # save figure
+    if savefigs
+        plt.savefig("images/aep-distributions-compound.pdf", transparent=true)
+    end
+
+    # show figure
+    if showfigs
+        plt.show()
+    end
+end
+
 function make_images()
 
     fontsize = 8
@@ -1717,19 +1888,17 @@ function make_images()
     # opt_comparison_table(case="high-ti", tuning="sowfa-nrel")
     # opt_comparison_table(case="low-ti", tuning="sowfa-nrel")
     
-    # directional_comparison_figure_compound(colors, fontsize, showfigs=showfigs, savefigs=savefigs)
+    directional_comparison_figure_compound(colors, fontsize, showfigs=showfigs, savefigs=savefigs)
 
-    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel")
-    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel")
+    # turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel")
+    # turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel")
+    
+    # plot_results_distribution(colors; savefigs=savefigs, showfigs=showfigs, fontsize=fontsize)
 
     # horns_rev_rows_verification_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
     # horns_rev_direction_verification_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
 
-    # turbine_layouts(colors, case="low-ti-opt", showfigs=showfigs, savefigs=savefigs)
-    # turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
-
-    # turbine_layouts(colors, case="high-ti-opt", showfigs=showfigs, savefigs=savefigs)
-    # turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
+    # turbine_layouts_compound(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
 
     # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
 
@@ -1751,4 +1920,14 @@ end
     
     # directional_comparison_figure_polar(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="annualenergyloss")
     # directional_comparison_figure_polar(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="annualenergyloss")
+    
+
+    # turbine_layouts(colors, case="low-ti-opt", showfigs=showfigs, savefigs=savefigs)
+    # turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
+
+    # turbine_layouts(colors, case="high-ti-opt", showfigs=showfigs, savefigs=savefigs)
+    # turbine_layouts(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
+
+    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel")
+    # turbine_comparison_figures(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel")
     

@@ -38,6 +38,11 @@ function load_results(case, tuning; wec=true, dir="", n=nothing)
     return df
 end
 
+function save_distributions(df; case="low-ti", n=1)
+    outfile = "results-distribution-$case-$n.csv"
+    CSV.write(outfile, df[!, [:aepib, :aepfb]])
+end
+
 function find_samples_needed(aep_samples)
 
     scale = 1E-0
