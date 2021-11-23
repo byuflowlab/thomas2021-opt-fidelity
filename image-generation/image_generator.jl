@@ -1836,27 +1836,75 @@ function plot_results_distribution(colors; savefigs=false, showfigs=false, fonts
     # generate figure
     fig, ax = plt.subplots(1,2, sharey=true, sharex=true, figsize=(8,3))
 
+    # select representative ids 
+    high_ti_opt_layout_id = 83
+    low_ti_best_layout_id = 252
+
     # plot histogram 
     bins = 400:1:500
-    (n, binedges, patches) = ax[1].hist(high_ti_data[!, :aepib], label="Start AEP", color=colors[1],bins=bins)
+    startfacecolor = 1
+    optfacecolor = 2
+    baseedgecolor = 3
+    bestedgecolor = 4
+    lw = 0.75
+
+    # plot high-ti start AEPs
+    (n, binedges, patches) = ax[1].hist(high_ti_data[!, :aepib], label="Start AEP", color=colors[startfacecolor],bins=bins)
+    
+    # outline high-ti base case AEP bin in gray
     bx = high_ti_data[1, :aepib]
     by = Int(n[findall(<=(high_ti_data[1, :aepib]), binedges)[end]])
-    ax[1].hist(ones(by)*bx, label="Base Start Bin", color=colors[1], edgecolor=colors[2], bins=bins)
+    ax[1].hist(ones(by)*bx, lw=lw, fc=(0, 0, 0, 0), edgecolor=colors[baseedgecolor], bins=bins)
 
-    ax[1].hist(high_ti_data[!, :aepfb], label="Optimized AEP", color=colors[3],bins=bins)
+    # outline high-ti start case AEP bin in orange 
+    bx = high_ti_data[high_ti_opt_layout_id, :aepib]
+    by = Int(n[findall(<=(high_ti_data[high_ti_opt_layout_id, :aepib]), binedges)[end]])
+    ax[1].hist(ones(by)*bx, lw=lw, fc=(0, 0, 0, 0), edgecolor=colors[bestedgecolor], bins=bins)
+
+    # plot high-ti opt AEPs
+    (n, binedges, patches) = ax[1].hist(high_ti_data[!, :aepfb], label="Optimized AEP", color=colors[optfacecolor],bins=bins)
     
-    (n, binedges, patches) = ax[2].hist(low_ti_data[!, :aepib]*1E-1, label="Start AEP", color=colors[1],bins=bins)
+    # outline high-ti base case opt AEP bin in dark blue
+    bx = high_ti_data[1, :aepfb]
+    by = Int(n[findall(<=(high_ti_data[1, :aepfb]), binedges)[end]])
+    ax[1].hist(ones(by)*bx, lw=lw, fc=(0, 0, 0, 0), edgecolor=colors[baseedgecolor], bins=bins, label="Base Case Bin")
+
+    # outline high-ti start case opt AEP bin in orange
+    bx = high_ti_data[high_ti_opt_layout_id, :aepfb]
+    by = Int(n[findall(<=(high_ti_data[high_ti_opt_layout_id, :aepfb]), binedges)[end]])
+    ax[1].hist(ones(by)*bx, lw=lw, fc=(0, 0, 0, 0), edgecolor=colors[bestedgecolor], bins=bins, label="Best Case Bin")
+
+    # plot low-ti start AEPs
+    (n, binedges, patches) = ax[2].hist(low_ti_data[!, :aepib]*1E-1, color=colors[startfacecolor],bins=bins)
+    
+    # outline low-ti base case start bin
     bx = low_ti_data[1, :aepib]*1E-1
     by = Int(n[findall(<=(low_ti_data[1, :aepib]*1E-1), binedges)[end]])
-    ax[2].hist(ones(by)*bx, label="Base Start Bin", color=colors[1], bins=bins, edgecolor=colors[2])
+    ax[2].hist(ones(by)*bx, lw=lw, fc=(0, 0, 0, 0), bins=bins, edgecolor=colors[baseedgecolor])
 
-    ax[2].hist(low_ti_data[!, :aepfb]*1E-1, label="Optimized AEP", color=colors[3],bins=bins)
+    # outline low-ti best case start bin
+    bx = low_ti_data[low_ti_best_layout_id, :aepib]*1E-1
+    by = Int(n[findall(<=(low_ti_data[low_ti_best_layout_id, :aepib]*1E-1), binedges)[end]])
+    ax[2].hist(ones(by)*bx, lw=lw, fc=(0, 0, 0, 0), bins=bins, edgecolor=colors[bestedgecolor])
+
+    # plot low-ti opt AEPs
+    (n, binedges, patches) = ax[2].hist(low_ti_data[!, :aepfb]*1E-1, color=colors[optfacecolor],bins=bins)
     
+    # outline base case opt AEP bin
+    bx = low_ti_data[1, :aepfb]*1E-1
+    by = Int(n[findall(<=(low_ti_data[1, :aepfb]*1E-1), binedges)[end]])
+    ax[2].hist(ones(by)*bx, lw=lw, fc=(0, 0, 0, 0), bins=bins, edgecolor=colors[baseedgecolor])
+
+    # outline best case opt AEP bin
+    bx = low_ti_data[low_ti_best_layout_id, :aepfb]*1E-1
+    by = Int(n[findall(<=(low_ti_data[low_ti_best_layout_id, :aepfb]*1E-1), binedges)[end]])
+    ax[2].hist(ones(by)*bx, lw=lw, fc=(0, 0, 0, 0), bins=bins, edgecolor=colors[bestedgecolor])
+
     # format histogram
     ax[1].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", ylabel="Count", title="(a) High-TI")
     ax[2].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", title="(b) Low-TI")
     ax[1].legend(frameon=false)
-    ax[2].legend(frameon=false, loc="upper left")
+    # ax[2].legend(frameon=false, loc="upper left")
 
     # removes spines
     ax[1].spines["right"].set_visible(false)
