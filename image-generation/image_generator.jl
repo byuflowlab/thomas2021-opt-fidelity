@@ -116,7 +116,7 @@ function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarl
     return im, cbar
 end
 
-function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="windshear-", case="high-ti")
+function wind_shear_tuning(colors, fontsize; ax=nothing, showfigs=false, savefigs=false, image_directory="images/", image_name="windshear-", case="high-ti")
 
     # load data 
     df_model = DataFrame(CSV.File("./image-data/wind-shear/$(case)/wind-shear-tuned-$(case).txt", skipto=2, header=false))
@@ -141,39 +141,33 @@ function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, ima
     swept_bottom = hub_height - rotor_diameter/2.0
 
     # create plot 
-    fig, ax = plt.subplots(figsize=(5.5,2.5))
-
+    if ax === nothing
+        fig, ax = plt.subplots(figsize=(5.5,2.5))
+    end
     # plot les data 
     ax.scatter(df_les.s, df_les.h, color=colors[2], s=10)
 
-    if case=="high-ti"
-        ax.annotate("LES", (8.9, 130), color=colors[2], alpha=1.0, size=fontsize)
-    elseif case=="low-ti"
-        ax.annotate("LES", (8.4, 130), color=colors[2], alpha=1.0, size=fontsize)
-        # ax.annotate("LES", (7.9, 125), color=colors[2], alpha=1.0, size=fontsize)
-    end
+    case=="high-ti" && ax.annotate("High-TI LES", (8.8, 130), color=colors[2], alpha=1.0, size=fontsize)
+    case=="low-ti" && ax.annotate("Low-TI LES", (8.425, 130), color=colors[2], alpha=1.0, size=fontsize)
 
     # plot model 
     ax.plot(df_model.s, df_model.h, color=colors[3])
 
-    if case=="high-ti"
-        ax.annotate("Curve Fit", (7.5, 130), color=colors[3], alpha=1.0, size=fontsize)
-    elseif case=="low-ti"
-        ax.annotate("Curve Fit", (7.5, 130), color=colors[3], alpha=1.0, size=fontsize)
-        # ax.annotate("Curve Fit", (8.25, 95), color=colors[3], alpha=1.0, size=fontsize) 
-    end
+    case=="high-ti" && ax.annotate("High-TI Curve Fit", (6.7, 130), color=colors[3], alpha=1.0, size=fontsize)
+    case=="low-ti" && ax.annotate("Low-TI Curve Fit", (6.5, 130), color=colors[3], alpha=1.0, size=fontsize)
+    
     # add rotor swept area 
     # ax.plot([minimum(df_model.s), maximum(df_model.s)], [swept_top, swept_top], color=colors[1], linestyle="--")
     # ax.plot([minimum(df_model.s), maximum(df_model.s)], [swept_bottom, swept_bottom], color=colors[1], linestyle="--")
     ax.fill_between(minv:maxv, swept_bottom,swept_top, alpha=0.15, color=colors[1])
-    ax.annotate("Rotor-Swept Region", (5.5, (hub_height+swept_bottom)/2.0), color=colors[1], alpha=1.0, size=fontsize)
+    ax.annotate("Rotor-Swept Region", (4.5, (hub_height+swept_bottom)/2.0), color=colors[1], alpha=1.0, size=fontsize)
 
     # add hub height
-    plt.plot([minv,maxv], [hub_height, hub_height], color=colors[1], linestyle="-.")
+    ax.plot([minv,maxv], [hub_height, hub_height], color=colors[1], linestyle="-.")
 
     # add axis labels
-    plt.xlabel(L"Wind speed (m s$^{-1}$)", fontsize=fontsize)
-    plt.ylabel("Height (m)", fontsize=fontsize)
+    ax.set_xlabel(L"Wind speed (m s$^{-1}$)")#, fontsize=fontsize)
+    ax.set_ylabel("Height (m)")#, fontsize=fontsize)
 
     # remove top and right spines 
     # Hide the right and top spines
@@ -189,8 +183,8 @@ function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, ima
     ax.set_ylim([0.0, 310.0])
 
     # set ticks 
-    plt.xticks(minv:maxv, size=fontsize)
-    plt.yticks(0:100:300, size=fontsize)
+    ax.set(xticks=minv:maxv)
+    ax.set(yticks=0:100:300)
 
     # make sure everything fits 
     plt.tight_layout()
@@ -201,6 +195,26 @@ function wind_shear_tuning(colors, fontsize; showfigs=false, savefigs=false, ima
     end
     if savefigs
         plt.savefig(image_directory*image_name*case*".pdf", transparent=true)
+    end
+end
+
+function wind_shear_tuning_compound(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="windshear-compound")
+    fig, ax = plt.subplots(1,2, figsize=(10,3))
+
+    wind_shear_tuning(colors, fontsize*1.25, ax=ax[1], case="high-ti")
+    wind_shear_tuning(colors, fontsize*1.25, ax=ax[2], case="low-ti")
+
+    ax[1].text(7,-120,"(a)",horizontalalignment="center",fontsize=fontsize*1.25)
+    ax[2].text(7,-120,"(b)",horizontalalignment="center",fontsize=fontsize*1.25)
+    
+    plt.tight_layout()
+
+    # save figure
+    if showfigs
+        plt.show()
+    end
+    if savefigs
+        plt.savefig(image_directory*image_name*".pdf", transparent=true)
     end
 end
 
@@ -939,8 +953,8 @@ function directional_comparison_figure_compound(colors, fontsize; showfigs=false
     ax[3,1].set(xticks=10:60:360, yticks=0:2:16)
 
     # add column titles
-    ax[1,1].set(title="High TI")
-    ax[1,2].set(title="Low TI")
+    ax[1,1].set(title="High-TI")
+    ax[1,2].set(title="Low-TI")
 
     # add subfigure labels
     i=97
@@ -1004,8 +1018,8 @@ function directional_comparison_figure_compound(colors, fontsize; showfigs=false
     ax[2,2].legend(frameon=false)
 
     # add column titles
-    ax[1,1].set(title="High TI")
-    ax[1,2].set(title="Low TI")
+    ax[1,1].set(title="High-TI")
+    ax[1,2].set(title="Low-TI")
 
     # add subfigure labels
     i=97
@@ -1236,17 +1250,17 @@ function turbine_comparison_figures_compound(colors, fontsize; showfigs=false, s
     ax[1].set(ylabel="Wind Direction (degrees)", xlabel="Turbine Index")
     ax[1].xaxis.set_label_position("top") 
     if case == "high-ti"
-        ax[1].set_title("(a) High TI Base")
+        ax[1].set_title("(a) High-TI Base")
     elseif case == "low-ti"
-        ax[1].set_title("(a) Low TI Base")
+        ax[1].set_title("(a) Low-TI Base")
     end
     
     ax[2].set(ylabel="Wind Direction (degrees)", xlabel="Turbine Index")
     ax[2].xaxis.set_label_position("top") 
     if case == "high-ti"
-        ax[2].set_title("(b) High TI Optimized")
+        ax[2].set_title("(b) High-TI Optimized")
     elseif case == "low-ti"
-        ax[2].set_title("(b) Low TI Optimized")
+        ax[2].set_title("(b) Low-TI Optimized")
     end
 
     plt.tight_layout()
@@ -1295,13 +1309,13 @@ function horns_rev_rows_verification_figure(colors, fontsize; showfigs=false, sa
         return xtxtloc
     end
 
-    fig, ax = plt.subplots(1,2,figsize=(8,3))
+    fig, ax = plt.subplots(1,2,figsize=(10,3))
 
     xtxtloc100 = each_subfig!(ax[1], 100, colors, fontsize)
     xtxtloc1 = each_subfig!(ax[2], 1, colors, fontsize)
 
-    ax[1].text(xtxtloc100,-0.3,"(a)",horizontalalignment="center",fontsize=fontsize)
-    ax[2].text(xtxtloc1,-0.3,"(b)",horizontalalignment="center",fontsize=fontsize)
+    ax[1].text(xtxtloc100,-0.3,"(a)",horizontalalignment="center",fontsize=fontsize*1.25)
+    ax[2].text(xtxtloc1,-0.3,"(b)",horizontalalignment="center",fontsize=fontsize*1.25)
 
     plt.subplots_adjust(top=0.99,bottom=0.22,right=0.92,left=0.08,wspace=5.4)
 
@@ -1355,14 +1369,13 @@ function horns_rev_direction_verification_figure(colors, fontsize; showfigs=fals
         return xtxtloc
     end
 
-    fig, ax = plt.subplots(1,2, figsize=(10,4))
-
+    fig, ax = plt.subplots(1,2, figsize=(10,3))
     
     xtxtloc100 = each_subfig!(ax[1], 100, colors)
     xtxtloc1 = each_subfig!(ax[2], 1, colors)
 
-    ax[1].text(xtxtloc100,-0.3,"(a)",horizontalalignment="center")
-    ax[2].text(xtxtloc1,-0.3,"(b)",horizontalalignment="center")
+    ax[1].text(xtxtloc100,-0.3,"(a)",horizontalalignment="center", fontsize=fontsize*1.25)
+    ax[2].text(xtxtloc1,-0.3,"(b)",horizontalalignment="center", fontsize=fontsize*1.25)
 
     plt.subplots_adjust(top=0.99,bottom=0.22,right=0.92,left=0.08,wspace=0.8)
 
@@ -1626,13 +1639,13 @@ function turbine_layouts_compound(colors ;rotor_diameter=126.4,les_side=5000,
     turbine_layouts(colors ;ax=ax[1,1], fontsize=fontsize, iter="base", layoutid=1, case="high-ti", annotate=true)
     turbine_layouts(colors ;ax=ax[1,2], fontsize=fontsize, iter="start", layoutid=83, n=4, case="high-ti")
     turbine_layouts(colors ;ax=ax[1,3], fontsize=fontsize, iter="opt", layoutid=83, n=4, case="high-ti")
-    ax[1,1].set(ylabel="High TI")
+    ax[1,1].set(ylabel="High-TI")
     
     # low ti
     turbine_layouts(colors ;ax=ax[2,1], fontsize=fontsize, iter="base", layoutid=1, case="low-ti")
     turbine_layouts(colors ;ax=ax[2,2], fontsize=fontsize, iter="start", layoutid=252, n=2, case="low-ti")
     turbine_layouts(colors ;ax=ax[2,3], fontsize=fontsize, iter="opt", layoutid=252, n=2, case="low-ti")
-    ax[2,1].set(ylabel="Low TI")
+    ax[2,1].set(ylabel="Low-TI")
 
     # add overhead labels 
     ax[1,1].set(title="Base")
@@ -1825,16 +1838,23 @@ function plot_results_distribution(colors; savefigs=false, showfigs=false, fonts
 
     # plot histogram 
     bins = 400:1:500
-    ax[1].hist(high_ti_data[!, :aepib], label="Start AEP", color=colors[1],bins=bins)
-    ax[1].hist(high_ti_data[!, :aepfb], label="Optimized AEP", color=colors[4],bins=bins)
+    (n, binedges, patches) = ax[1].hist(high_ti_data[!, :aepib], label="Start AEP", color=colors[1],bins=bins)
+    bx = high_ti_data[1, :aepib]
+    by = Int(n[findall(<=(high_ti_data[1, :aepib]), binedges)[end]])
+    ax[1].hist(ones(by)*bx, label="Base Start Bin", color=colors[1], edgecolor=colors[2], bins=bins)
 
-    ax[2].hist(low_ti_data[!, :aepib]*1E-1, label="Start AEP", color=colors[2],bins=bins)
+    ax[1].hist(high_ti_data[!, :aepfb], label="Optimized AEP", color=colors[3],bins=bins)
+    
+    (n, binedges, patches) = ax[2].hist(low_ti_data[!, :aepib]*1E-1, label="Start AEP", color=colors[1],bins=bins)
+    bx = low_ti_data[1, :aepib]*1E-1
+    by = Int(n[findall(<=(low_ti_data[1, :aepib]*1E-1), binedges)[end]])
+    ax[2].hist(ones(by)*bx, label="Base Start Bin", color=colors[1], bins=bins, edgecolor=colors[2])
+
     ax[2].hist(low_ti_data[!, :aepfb]*1E-1, label="Optimized AEP", color=colors[3],bins=bins)
-    println(minimum([minimum(high_ti_data[!, :aepib]),minimum(high_ti_data[!, :aepfb]),minimum(low_ti_data[!, :aepib]*1E-1),minimum(low_ti_data[!, :aepfb]*1E-1)]))
-    println(maximum([maximum(high_ti_data[!, :aepib]),maximum(high_ti_data[!, :aepfb]),maximum(low_ti_data[!, :aepib]*1E-1),maximum(low_ti_data[!, :aepfb]*1E-1)]))
+    
     # format histogram
-    ax[1].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", ylabel="Count", title="(a) High TI")
-    ax[2].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", title="(b) Low TI")
+    ax[1].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", ylabel="Count", title="(a) High-TI")
+    ax[2].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", title="(b) Low-TI")
     ax[1].legend(frameon=false)
     ax[2].legend(frameon=false, loc="upper left")
 
@@ -1881,19 +1901,19 @@ function make_images()
     savefigs = true 
     showfigs = true
 
-    # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti")
-    # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
+    # wind_shear_tuning_compound(colors, fontsize, showfigs=showfigs, savefigs=savefigs, image_directory="images/", image_name="windshear-compound")
+
     # layout(colors, fontsize)
 
     # opt_comparison_table(case="high-ti", tuning="sowfa-nrel")
     # opt_comparison_table(case="low-ti", tuning="sowfa-nrel")
     
-    directional_comparison_figure_compound(colors, fontsize, showfigs=showfigs, savefigs=savefigs)
+    # directional_comparison_figure_compound(colors, fontsize, showfigs=showfigs, savefigs=savefigs)
 
     # turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel")
     # turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel")
     
-    # plot_results_distribution(colors; savefigs=savefigs, showfigs=showfigs, fontsize=fontsize)
+    plot_results_distribution(colors; savefigs=savefigs, showfigs=showfigs, fontsize=fontsize)
 
     # horns_rev_rows_verification_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
     # horns_rev_direction_verification_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
@@ -1908,6 +1928,9 @@ end
 
 
     ############# obsolete/not used #############
+    # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti")
+    # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
+    
     # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
     # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
     # directional_comparison_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="improvement")
