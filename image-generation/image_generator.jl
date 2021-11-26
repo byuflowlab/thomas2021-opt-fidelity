@@ -9,6 +9,7 @@ using PrettyTables
 using DelimitedFiles
 using LaTeXStrings
 import VectorizedRoutines; const ml = VectorizedRoutines.Matlab
+using LinearAlgebra
 
 function custum_color_map(;idx=[3, 1, 4])
     colors = [colorant"#BDB8AD", colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"]
@@ -16,6 +17,83 @@ function custum_color_map(;idx=[3, 1, 4])
     # cmap = matcolors.ListedColormap([(1,0,0),(0,1,0),(0,0,1)],"A")
 
     return plt.ColorMap("BlueGrayOrange", colors[idx])
+end
+
+# annotate
+function annotate_dim(ax, xyfrom, xyto; text=nothing, text_buffer=0.05)
+
+    if text === nothing
+        text = "$((sqrt((xyfrom[1] - xyto[1]) ^ 2 + (xyfrom[2] - xyto[2]) ^ 2)))"
+    end
+    ax.annotate("", xyfrom, xyto, arrowprops=Dict("arrowstyle"=>"<->"))
+    ax.text((xyto[1] + xyfrom[1]) / 2, (xyto[2] + xyfrom[2]) / 2 + text_buffer, text, fontsize=16)
+end
+
+function annotate_dim2(ax, xyfrom, xyto; text=nothing, text_buffer=0.05, line_buffer=0.05, dir_type="x", cap_length=0.1,
+                cap_buffer=0.05, cap_on=[true, true], arc_radius=0.25, angle_text_buffer =4)
+
+    if text === nothing
+        text = "$((sqrt((xyfrom[1] - xyto[1]) ^ 2 + (xyfrom[2] - xyto[2]) ^ 2)))"
+    end
+
+    if dir_type == "x"
+        x = [xyfrom[1], xyto[1]]
+        y = [xyfrom[2], xyto[2]]
+        y[:] .= maximum(y)
+
+        # dimension line
+        ax.annotate("", [x[1],y[1]+line_buffer+cap_length/2], [x[2],y[2]+line_buffer+cap_length/2], arrowprops=Dict("arrowstyle"=>"<|-|>", "color"=>"k"))
+
+        # extension lines
+        if cap_on[1]
+            ax.plot([xyfrom[1], xyfrom[1]], [xyfrom[2]+cap_buffer, xyto[2] + line_buffer+cap_length], "k", linewidth=1.0)
+        end
+        if cap_on[2]
+            ax.plot([xyto[1], xyto[1]], [xyto[2]+cap_buffer, xyto[2] + line_buffer+cap_length], "k", linewidth=1.0)
+        end
+        # text
+        ax.text((x[1] + x[2]) / 2, (y[1] + y[2]) / 2 + text_buffer + line_buffer + cap_length/2, text, fontsize=16)
+    end
+    if dir_type == "y"
+        x = [xyfrom[1], xyto[1]]
+        y = [xyfrom[2], xyto[2]]
+        x[:] .= maximum(x)
+
+        # dimension line
+        ax.annotate("", [x[0] + line_buffer + cap_length / 2, y[0]], [x[1]+ line_buffer + cap_length / 2, y[1] ],
+                    arrowprops=Dict("arrowstyle"=>"<|-|>", "color"=>"k"))
+
+        # extension caps
+        if cap_on[1]
+            ax.plot([xyfrom[1] + cap_buffer, xyfrom[1] + line_buffer + cap_length ], [xyfrom[2] , xyfrom[2] ], "k",
+                linewidth=1.0)
+        end
+
+        if cap_on[2]
+            ax.plot([xyto[1] + cap_buffer, xyto[1]+ line_buffer + cap_length], [xyto[2] , xyto[2] ], "k", linewidth=1.0)
+        end
+
+        # text
+        ax.text((x[1] + x[2]) / 2 + text_buffer + line_buffer + cap_length / 2, (y[1] + y[2]) / 2 , text,
+                fontsize=16)
+    end
+    if dir_type == "angle"
+
+        # parse input
+        center_point = xyfrom
+        arc_start = xyto[1]
+        arc_end = xyto[2]
+
+        # draw arc
+        arc = plt.matplotlib.patches.Arc(center_point, arc_radius, arc_radius, angle=0.0, theta1=arc_start, theta2=arc_end)
+        ax.add_artist(arc)
+
+        # add text
+        text_angle = pi*(arc_start - angle_text_buffer + (arc_end - arc_start)/2.0)/180.0
+        xt = (arc_radius + text_buffer - 0.9)*cos(text_angle) + center_point[1]
+        yt = (arc_radius + text_buffer - 0.9)*sin(text_angle) + center_point[2]
+        ax.text(xt, yt, text, fontsize=16)
+    end
 end
 
 function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true, labelpixels=true, vcolor="w", edgecolor="w", boxmaxmin=true, edgecolors=nothing)
@@ -1540,7 +1618,7 @@ function sunflower_points(n, alpha=1.0)
 end
 
 function turbine_layouts(colors ;ax=nothing, rotor_diameter=126.4,les_side=5000,
-                                    c1="C0",c2="C1",color="C0",fontsize=10,
+                                    fontsize=10, numbers=true, lesborder=true, hexagons=true, 
                                     case="low-ti", tuning="sowfa-nrel", showfigs=false, savefigs=false,
                                     iter="base", layoutid=1, n=1, gen="angle-each-circle",
                                     compound=true, annotate=false)
@@ -1590,22 +1668,151 @@ function turbine_layouts(colors ;ax=nothing, rotor_diameter=126.4,les_side=5000,
 
     # xaxis.set_visible(False)
 
+    # add farm boundary
     R = rotor_diameter/2
     cx = 2500
     cy = 2500
     lw = 0.75
     plot_circle(cx,cy,boundary_radius,colors[2],ax,linestyle="--",linewidth=lw,label="Farm boundary")
     
-    les_x = [0,les_side,les_side,0,0]
-    les_y = [0,0,les_side,les_side,0]
-    ax.plot(les_x,les_y,"-",color=colors[4],linewidth=lw,label="LES domain")
-    
+    # add LES boundary
+    if lesborder
+        les_x = [0,les_side,les_side,0,0]
+        les_y = [0,0,les_side,les_side,0]
+        ax.plot(les_x,les_y,"-",color=colors[4],linewidth=lw,label="LES domain")
+    end
+
+    # add turbines
     nturbs = length(xlocs)
     for i=1:nturbs
         plot_circle(xlocs[i],ylocs[i],R,colors[3],ax,linewidth=1,fill=false)
-        ax.text(xlocs[i]+rotor_diameter/5,ylocs[i]+rotor_diameter/5,"$i",
+        # add numbers to plot
+        numbers && ax.text(xlocs[i]+rotor_diameter/5,ylocs[i]+rotor_diameter/5,"$i",
                 fontsize=fontsize-2,horizontalalignment="left",verticalalignment="bottom",
                 color=colors[1])
+    end
+
+    # add hexagons 
+    if hexagons
+        baserot = (360.0/12.0)*(pi/180.0)
+        
+        if case == "high-ti"
+            turbsouter = [25,23]
+            turbsinner = [17,15]
+        elseif case == "low-ti"
+            turbsouter = [35,33]
+            turbsinner = [8,18]
+        end
+
+        # get line vectors
+        l1o = [xlocs[turbsouter[2]], ylocs[turbsouter[2]]] - [cx, cy]
+        l2o = [xlocs[turbsouter[1]], ylocs[turbsouter[1]]] - [cx, cy]
+        vouter = l1o - l2o 
+
+        l1i = [xlocs[turbsinner[2]], ylocs[turbsinner[2]]] - [cx, cy]
+        l2i = [xlocs[turbsinner[1]], ylocs[turbsinner[1]]] - [cx, cy]
+        vinner = l1i - l2i
+        
+        # get unit vectors to side
+        ndouter = abs.([vouter[2], -vouter[1]])
+        ndouter /= norm(ndouter)
+        ndinner = abs.([vinner[2], -vinner[1]])
+        ndinner /= norm(ndinner)
+
+        # get distance to side 
+        douter = dot(l1o, ndouter)
+        dinner = dot(l1i, ndinner)
+
+        # get vectors perpenticular to sides
+        vdouter = douter*ndouter
+        vdinner = dinner*ndinner
+
+        # get rotation angles to sides
+        betaouter = atan(vdouter[1]/vdouter[2])
+        betainner = atan(vdinner[1]/vdinner[2])
+        
+        # get hex radius
+        router = douter/cos(baserot)
+        rinner = dinner/cos(baserot)
+
+        # get hex rotations 
+        thetaouter = baserot - betaouter
+        thetainner = baserot - betainner
+        # println(thetaouter)
+        # create rectanguler patches
+        hexouter = plt.matplotlib.patches.RegularPolygon((cx, cy), 6, radius=router, orientation=thetaouter, fill=nothing, color=colors[1])
+        hexinner = plt.matplotlib.patches.RegularPolygon((cx, cy), 6, radius=rinner, orientation=thetainner, fill=nothing, color=colors[1])
+        
+        # add patches to plot
+        ax.add_patch(hexouter)
+        ax.add_patch(hexinner)
+
+        # add verticle line 
+        angleradius = 4000
+        ax.plot([cx, cx], [cy, cy+angleradius], "k--", lw=1, alpha=0.5)
+
+        # print angles
+        println("Beta Outer: $(betaouter*180/pi)")
+        println("Beta Inner: $(betaouter*180/pi)")
+        println("Beta 10: $(10)")
+
+        # add 10 degree rotation line
+        # rx = cx + angleradius*cos(pi/2 - 10*pi/180)
+        # ry = cy + angleradius*sin(pi/2 - 10*pi/180)
+        # ax.plot([cx, rx], [cy, ry], "k--", lw=1, alpha=0.5)
+
+        if sign(thetaouter - thetainner) == -1
+            iscale = 0.8
+            oscale = 1.0
+            oarcshift = 1.2
+            iarcshift = 0.8
+            oxlshift = 0.0
+            ixlshift = -450
+        else
+            iscale = 1.0
+            oscale = 0.8
+            oarcshift = 0.8
+            iarcshift = 1.2
+            oxlshift = -450
+            ixlshift = 0.0
+        end
+
+        # add outer rotation line
+        rx1 = cx + oscale*angleradius*cos(thetaouter + 2*baserot)
+        ry1 = cy + oscale*angleradius*sin(thetaouter + 2*baserot)
+        ax.plot([cx, rx1], [cy, ry1], "k--", lw=1, alpha=0.5)
+
+        # add inner rotation line
+        rx2 = cx + iscale*angleradius*cos(thetainner + 2*baserot)
+        ry2 = cy + iscale*angleradius*sin(thetainner + 2*baserot)
+        ax.plot([cx, rx2], [cy, ry2], "k--", lw=1, alpha=0.5)
+
+        # add outer arc 
+        ar = oarcshift*oscale*angleradius
+        arc = plt.matplotlib.patches.Arc((cx, cy), cx+ar, cy+ar, angle=90, theta1=-betaouter*180/pi, theta2=0, color=colors[1])
+        ax.add_patch(arc)
+        ax1 = (cx + rx1)/2 + oxlshift
+        ay1 = (cy + ar + ry1)/2
+        ax.annotate("$(Int(round(betaouter*180/pi,digits=0)))"*(L"^\circ"), (ax1, ay1))
+
+        # add inner arc
+        ar = iarcshift*iscale*angleradius
+        arc = plt.matplotlib.patches.Arc((cx, cy), cx+ar, cy+ar, angle=90, theta1=-betainner*180/pi, theta2=0, color=colors[1])
+        ax.add_patch(arc)
+        ax2 = (cx + rx2)/2 + ixlshift
+        ay2 = (cy + ar + ry2)/2
+        ax.annotate("$(Int(round(betainner*180/pi,digits=0)))"*(L"^\circ"), (ax2, ay2))
+
+
+        # xyto = [cx, cy+ar]
+        # xyfrom = [rx1, ry1]
+        # annotate_dim2(ax, xyfrom, xyto, text="alpha", text_buffer=0.05, line_buffer=0.05, dir_type="angle", cap_length=0.1,
+        # cap_buffer=0.05, cap_on=[true, true], arc_radius=3500, angle_text_buffer=4)
+
+        # ax.annotate("", xy=(cx, angleradius), xycoords="data", xytext=(rx2, ry2), textcoords="data", arrowprops=Dict("arrowstyle"=>"->", "connectionstyle"=>"arc3",))
+        
+
+
     end
 
     # ax.legend(fontsize=fontsize,bbox_to_anchor=[1.0, 1.0])
@@ -1629,9 +1836,7 @@ function turbine_layouts(colors ;ax=nothing, rotor_diameter=126.4,les_side=5000,
     end
 end
 
-function turbine_layouts_compound(colors ;rotor_diameter=126.4,les_side=5000,
-    c1="C0",c2="C1",color="C0",fontsize=10,
-    case="low-ti-opt", showfigs=false, savefigs=false)
+function turbine_layouts_compound_appendix(colors; fontsize=10, showfigs=false, savefigs=false)
 
     fig, ax = plt.subplots(2,3, figsize=(8,6), gridspec_kw=Dict("wspace" => 0.05, "hspace"=>0.0))
 
@@ -1676,7 +1881,7 @@ function turbine_layouts_compound(colors ;rotor_diameter=126.4,les_side=5000,
     plt.tight_layout()
 
     if savefigs
-        plt.savefig("images/layouts-compound.pdf", transparent=true)
+        plt.savefig("images/layouts-compound-appendix.pdf", transparent=true)
     end
 
     # save figure
@@ -1685,7 +1890,92 @@ function turbine_layouts_compound(colors ;rotor_diameter=126.4,les_side=5000,
     end
 end
 
-function windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
+function turbine_layouts_compound_body(colors; fontsize=10, showfigs=false, savefigs=false)
+
+    fig, ax = plt.subplots(1,2, figsize=(6,4), gridspec_kw=Dict("wspace" => 0.05, "hspace"=>0.0))
+
+    # high ti
+    turbine_layouts(colors ;ax=ax[1], fontsize=fontsize, iter="opt", layoutid=83, n=4, case="high-ti", annotate=true)
+    
+    # low ti
+    turbine_layouts(colors ;ax=ax[2], fontsize=fontsize, iter="opt", layoutid=252, n=2, case="low-ti")
+    
+    # add labels
+    xtxtloc = 2500
+    ax[1].text(xtxtloc,-600.,"(a) High-TI",horizontalalignment="center")
+    ax[2].text(xtxtloc,-600.,"(b) Low-TI",horizontalalignment="center")
+
+    # remove spines
+    for axi in ax
+        axi.axes.xaxis.set_visible(false)
+        # axi.axes.yaxis.set_visible(false)
+        axi.tick_params(left=false, labelleft=false)
+        #remove background patch (only needed for non-white background)
+        axi.patch.set_visible(false)
+
+        axi.spines["top"].set_visible(false)
+        axi.spines["bottom"].set_visible(false)
+        axi.spines["left"].set_visible(false)
+        axi.spines["right"].set_visible(false)
+    end
+
+    plt.tight_layout()
+
+    if savefigs
+        plt.savefig("images/layouts-compound-body.pdf", transparent=true)
+    end
+
+    # save figure
+    if showfigs
+        plt.show()
+    end
+end
+
+function turbine_layouts_compound_hexagons(colors; fontsize=10, showfigs=false, savefigs=false)
+
+    fig, ax = plt.subplots(1,2, figsize=(6,4), gridspec_kw=Dict("wspace" => 0.05, "hspace"=>0.0))
+
+    # high ti
+    turbine_layouts(colors ;ax=ax[1], fontsize=fontsize, iter="opt", layoutid=83, n=4, case="high-ti", annotate=false, lesborder=false, numbers=false, hexagons=true)
+    
+    # low ti
+    turbine_layouts(colors ;ax=ax[2], fontsize=fontsize, iter="opt", layoutid=252, n=2, case="low-ti", annotate=false, lesborder=false, numbers=false, hexagons=true)
+    
+    # add windrose data
+
+
+    # add labels
+    xtxtloc = 2500
+    ax[1].text(xtxtloc,-600.,"(a) High-TI",horizontalalignment="center")
+    ax[2].text(xtxtloc,-600.,"(b) Low-TI",horizontalalignment="center")
+
+    # remove spines
+    for axi in ax
+        axi.axes.xaxis.set_visible(false)
+        # axi.axes.yaxis.set_visible(false)
+        axi.tick_params(left=false, labelleft=false)
+        #remove background patch (only needed for non-white background)
+        axi.patch.set_visible(false)
+
+        axi.spines["top"].set_visible(false)
+        axi.spines["bottom"].set_visible(false)
+        axi.spines["left"].set_visible(false)
+        axi.spines["right"].set_visible(false)
+    end
+
+    plt.tight_layout()
+
+    if savefigs
+        plt.savefig("images/layouts-opt-hexagons.pdf", transparent=true)
+    end
+
+    # save figure
+    if showfigs
+        plt.show()
+    end
+end
+
+function windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave", ax=nothing)
     
     f1 = f1./sum(f1)
     f2 = f2./sum(f2)
@@ -1696,12 +1986,16 @@ function windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
         d2 = deg2rad.(d2)
     end
     println(wd1)
-    plt.figure(figsize=(6,3))
-    ax1 = plt.subplot(121,projection="polar")
-    ax2 = plt.subplot(122,projection="polar")
-
+    if ax === nothing
+        plt.figure(figsize=(6,3))
+        ax1 = plt.subplot(121,projection="polar")
+        ax2 = plt.subplot(122,projection="polar")
+    elseif length(ax) == 1
+        ax1 = ax 
+    end
     ndirs1 = length(d1)
     width1 = 2*pi/ndirs1
+
     ax1.bar(pi/2 .-d1,f1,width=width1,color=color,alpha=alpha,edgecolor="black")
     ax1.set_xticks((0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4))
     ax1.set_xticklabels(("E","NE","N","NW","W","SW","S","SW"),fontsize=fontsize)
@@ -1710,24 +2004,26 @@ function windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
         tick.set_horizontalalignment("center")
     end
 
+    if ax === nothing
+        ndirs2 = length(d2)
+        width2 = 2*pi/ndirs2
+        ax2.bar(pi/2 .-d2,f2,width=width2,color=color,alpha=alpha,edgecolor="black")
+        ax2.set_xticks((0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4))
+        ax2.set_xticklabels(("E","NE","N","NW","W","SW","S","SW"),fontsize=fontsize)
+        ax2.set_rgrids((0.02,0.035,0.05),("2%","3.5%","5%"),angle=-20,fontsize=fontsize)
+        for tick in ax2.yaxis.get_majorticklabels()
+            tick.set_horizontalalignment("center")
+        end
 
-    ndirs2 = length(d2)
-    width2 = 2*pi/ndirs2
-    ax2.bar(pi/2 .-d2,f2,width=width2,color=color,alpha=alpha,edgecolor="black")
-    ax2.set_xticks((0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4))
-    ax2.set_xticklabels(("E","NE","N","NW","W","SW","S","SW"),fontsize=fontsize)
-    ax2.set_rgrids((0.02,0.035,0.05),("2%","3.5%","5%"),angle=-20,fontsize=fontsize)
-    for tick in ax2.yaxis.get_majorticklabels()
-        tick.set_horizontalalignment("center")
-    end
+        ax1.set_title("(a)", y=-0.25,fontsize=fontsize)
+        ax2.set_title("(b)", y=-0.25,fontsize=fontsize)
 
-    ax1.set_title("(a)", y=-0.25,fontsize=fontsize)
-    ax2.set_title("(b)", y=-0.25,fontsize=fontsize)
+        plt.subplots_adjust(left=0.05,right=0.95,top=0.9,bottom=0.2)
 
-    plt.subplots_adjust(left=0.05,right=0.95,top=0.9,bottom=0.2)
 
-    if filename != "nosave"
-        plt.savefig(filename,transparent=true)
+        if filename != "nosave"
+            plt.savefig(filename,transparent=true)
+        end
     end
 
 end
@@ -1961,12 +2257,16 @@ function make_images()
     # turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel")
     # turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel")
     
-    plot_results_distribution(colors; savefigs=savefigs, showfigs=showfigs, fontsize=fontsize)
+    # plot_results_distribution(colors; savefigs=savefigs, showfigs=showfigs, fontsize=fontsize)
 
     # horns_rev_rows_verification_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
     # horns_rev_direction_verification_figure(colors, fontsize, savefigs=savefigs, showfigs=showfigs)
 
-    # turbine_layouts_compound(colors, case="low-ti", showfigs=showfigs, savefigs=savefigs)
+    # turbine_layouts_compound_body(colors, fontsize=fontsize, showfigs=showfigs, savefigs=savefigs)
+
+    # turbine_layouts_compound_appendix(colors, fontsize=fontsize, showfigs=showfigs, savefigs=savefigs)
+
+    turbine_layouts_compound_hexagons(colors, fontsize=fontsize, showfigs=showfigs, savefigs=savefigs)
 
     # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
 

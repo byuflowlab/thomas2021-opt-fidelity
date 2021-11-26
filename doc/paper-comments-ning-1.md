@@ -42,38 +42,38 @@ X   For the julia packages without citatinos you should put a footnote with the 
 
 X   However, the final optimized…are within 1 GW h of each other.  I didn’t understand this sentence and how it contrasted from previous.
 
-.   I don’t see the hexagons - some of this discussion wasn’t clear to me.
+X   I don’t see the hexagons - some of this discussion wasn’t clear to me.
 
-.   “aligned with the 12 wind directions” - how can they be aligned with 12 directions?
+X   “aligned with the 12 wind directions” - how can they be aligned with 12 directions?
 
-.   “along rows perpendicular to that side’s direct wind” - what does this mean?
+X   “along rows perpendicular to that side’s direct wind” - what does this mean?
 
-.   “turbines with the wind” - turbines when the wind
+X   “turbines with the wind” - turbines when the wind
 
-.   the optimization favored straight lines aligned with the wind - why?  that doesn’t make sense to me.
+X   the optimization favored straight lines aligned with the wind - why?  that doesn’t make sense to me.
 
-.   I think there are some good insights in this paragraph describe the optimized results, but I’m not quite following it all. Maybe needs a little more explanation.
+X   I think there are some good insights in this paragraph describe the optimized results, but I’m not quite following it all. Maybe needs a little more explanation.
 
-.   Fig 10 probably reduce to just the optimized.  thtat’s the only thing you talk about anyway.  Base is already shown and start doesn’t really tell me much and it isn’t discussed.
+X   Fig 10 probably reduce to just the optimized.  thtat’s the only thing you talk about anyway.  Base is already shown and start doesn’t really tell me much and it isn’t discussed.
 
-.   Fig 10, you don’t refer to the subfigs (a, b, c, )
+X  Fig 10, you don’t refer to the subfigs (a, b, c, )
 
-.   “all the turbines in the farm that were not in any other turbines’ wakes” - what does this mean? 
+X   “all the turbines in the farm that were not in any other turbines’ wakes” - what does this mean? 
 
-.   Fig 11 - caption doesn’t refer to a, b, c,
+X   Fig 11 - caption doesn’t refer to a, b, c,
 
-.   we can now see that 220 - mention that this is the most probably direction.  You say that later, but that isn’t clear at this point in the paper
+X   we can now see that 220 - mention that this is the most probably direction.  You say that later, but that isn’t clear at this point in the paper
 
-.   actual power predictions we significantly - we -> were
+X   actual power predictions we significantly - we -> were
 
-.   under predicted - I think this can be one word
+X   under predicted - I think this can be one word
 
-.   BP predicted 7.7 for high and 10.2 for low.  SOWA 9.3 and 10.6.  This would be clearer if you listed this by TI case instead of by method.  When I read this the numbers I wanted to compare was BP to SOWFA. In other words 7.7 to 9.3 and 10.2 to 10.6. Comparing 7.7 and 10.2 is irrelevant, but the way it’s written makes those easily to compare. 
+X   BP predicted 7.7 for high and 10.2 for low.  SOWA 9.3 and 10.6.  This would be clearer if you listed this by TI case instead of by method.  When I read this the numbers I wanted to compare was BP to SOWFA. In other words 7.7 to 9.3 and 10.2 to 10.6. Comparing 7.7 and 10.2 is irrelevant, but the way it’s written makes those easily to compare. 
 
-.   same comment in conclusioins
+X   same comment in conclusioins
 
-.   I’d remove Table 1 and 2.  I don’t see what they add that isn’t in plots.
+X   I’d remove Table 1 and 2.  I don’t see what they add that isn’t in plots.
 
-.   the [individual] wind turbine power errors are - add a word for clarity
+X   the [individual] wind turbine power errors are - add a word for clarity
 
-.   “secured funding and provided support” - probably not the most relevant wording.  Kind of weird to mention the funding part especially when those who funded it are on the paper.  and support is too vague.  I’d say something like: provided direction, ideas, and feedback or something like that. 
+X   “secured funding and provided support” - probably not the most relevant wording.  Kind of weird to mention the funding part especially when those who funded it are on the paper.  and support is too vague.  I’d say something like: provided direction, ideas, and feedback or something like that. 
