@@ -37,7 +37,7 @@ def pickle_to_csv(case="low_ti",layout="",n="4"):
 
 
 if __name__ == "__main__":
-    pickle_to_csv(case="high-ti", layout="-opt", n="4")
-    pickle_to_csv(case="low-ti", layout="-opt", n="2")
+    # pickle_to_csv(case="high-ti", layout="-opt", n="4")
+    pickle_to_csv(case="low-ti", layout="-opt", n="3")
     # pickle_to_csv(case="low-ti", layout="")
     # pickle_to_csv(case="low-ti", layout="-opt")

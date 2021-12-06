@@ -96,7 +96,7 @@ function annotate_dim2(ax, xyfrom, xyto; text=nothing, text_buffer=0.05, line_bu
     end
 end
 
-function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true, labelpixels=true, vcolor="w", edgecolor="w", boxmaxmin=true, edgecolors=nothing)
+function heatmap(data, row_labels, col_labels, fontsize; ax=nothing, cbar_kw=Dict(), cbarlabel="", use_cbar=true, labelpixels=true, vcolor="w", edgecolor="w", boxmaxmin=true, edgecolors=nothing)
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -124,21 +124,25 @@ function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarl
     maxloc = findmax(data)[2]
     minloc = findmin(data)[2]
 
-    # label the pixels
+    # set the pixel edge colors
     if edgecolors === nothing
         edgecolors = []
+        maxminpixels = []
         if boxmaxmin
             for i = 1:length(row_labels)
                 for j = 1:length(col_labels)
                     if (i == maxloc[1] && j == maxloc[2])
                         push!(edgecolors, "k")
+                        push!(maxminpixels, [i, j])
                     elseif (i == minloc[1] && j == minloc[2])
                         push!(edgecolors, "k")
+                        push!(maxminpixels, [i, j])
                     else
                         push!(edgecolors, edgecolor)
                     end
                 end
             end
+
         end
     end
 
@@ -146,12 +150,12 @@ function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarl
     vmax=round(maximum(abs.(cbar_kw[:ticks])), digits=0)
     vmin = -vmax
     
-    im = ax.pcolormesh(data, edgecolor=edgecolors, cmap=cbar_kw[:cmap], vmin=vmin, vmax=vmax)
+    im = ax.pcolormesh(data, edgecolor=edgecolors, cmap=cbar_kw[:cmap], vmin=vmin, vmax=vmax, rasterized=false)
 
     # Create colorbar
     if use_cbar
         cbar = ax.figure.colorbar(im; ax=ax, cbar_kw...)
-        cbar.ax.set_xlabel(cbarlabel, rotation=0, va="bottom", labelpad=16)
+        cbar.ax.set_xlabel(cbarlabel, rotation=0, va="bottom", labelpad=16, fontsize=fontsize)
     else
         cbar = nothing
     end
@@ -167,6 +171,9 @@ function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarl
 
     # set tick labels and locations for y axis
     ax.set(yticklabels=row_labels, yticks=(1:length(row_labels)).-0.5)
+    
+    # set tick font size
+    ax.tick_params(labelsize=fontsize)
 
     # reverse y axis to make the result more table-like
     ax.invert_yaxis()
@@ -186,7 +193,7 @@ function heatmap(data, row_labels, col_labels; ax=nothing, cbar_kw=Dict(), cbarl
         for i = 1:length(row_labels)
             for j = 1:length(col_labels)
                 ax.text(j-0.5,i-0.5,data[i,j],
-                        ha="center",va="center",color=vcolor)
+                        ha="center",va="center",color=vcolor, fontsize=fontsize*0.9)
             end
         end
     end
@@ -359,8 +366,10 @@ function opt_comparison_table(;case="high-ti", tuning="sowfa-nrel")
         layoutid = 83
         n = 4
     elseif case == "low-ti"
-        layoutid = 252
-        n = 2
+        # layoutid = 252
+        layoutid = 385
+        # n = 2
+        n = 3
     end
 
     # flowfarm base data 
@@ -494,11 +503,12 @@ end
 function directional_comparison_figure(colors, fontsize; ax = nothing, showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison", case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
 
     if case == "low-ti"
-        layout = 252
-        n = 2
+        # layout = 252
+        layout = 385
+        n = 3
         # layout = 385
         # n = 3
-        sn = 2
+        sn = 3
         
     elseif case == "high-ti"
         layout = 83
@@ -512,7 +522,7 @@ function directional_comparison_figure(colors, fontsize; ax = nothing, showfigs=
 
     # flowfarm base data 
     basepowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout1-base.txt"
-    # basepowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout1-base-8ms.txt"
+    # basepowerfileff = "image-data/power/FLOWFarm/turbine-power-ff-100pts-$case-$tuning-layout1-base-8p055ms.txt"
 
     # sowfa base data
     basepowerfilesowfa = "image-data/power/SOWFA/turbine-power-$case-les.txt"
@@ -765,8 +775,10 @@ end
 function directional_comparison_figure_polar(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison", case="high-ti", tuning="sowfa-nrel", normalize=false, plottype="power")
 
     if case == "low-ti"
-        layout = 252
-        n = 2
+        # layout = 252
+        layout = 385
+        # n = 2
+        n = 3
     elseif case == "high-ti"
         layout = 83
         n = 4
@@ -988,7 +1000,8 @@ end
 # create compound figure with all directional results 
 function directional_comparison_figure_compound(colors, fontsize; showfigs=false, savefigs=false, image_directory="images/", image_name="directional-comparison")
 
-    fig, ax = plt.subplots(3, 2, figsize=[8,9], sharex=true, sharey="row")
+    figsize = [8,8]
+    fig, ax = plt.subplots(3, 2, figsize=figsize, sharex=true, sharey="row")
 
     # power
     directional_comparison_figure(colors, fontsize, ax=ax[1,1], case="high-ti", tuning="sowfa-nrel", plottype="power")
@@ -997,26 +1010,26 @@ function directional_comparison_figure_compound(colors, fontsize; showfigs=false
     ax[1,1].annotate("BP-optimized", (160, 60), color=colors[4])
     ax[1,1].annotate("BP-base", (160, 52.75), color=colors[1])
     directional_comparison_figure(colors, fontsize, ax=ax[1,2], case="low-ti", tuning="sowfa-nrel", plottype="power")
-    ax[1,2].annotate("SOWFA-optimized", (160, 61), color=colors[3])
+    ax[1,2].annotate("SOWFA-optimized", (140, 61), color=colors[3])
     ax[1,2].annotate("SOWFA-base", (150, 55), color=colors[2])
-    ax[1,2].annotate("BP-optimized", (160, 57.5), color=colors[4])
-    ax[1,2].annotate("BP-base", (80, 53), color=colors[1])
+    ax[1,2].annotate("BP-optimized", (160, 58.2), color=colors[4])
+    ax[1,2].annotate("BP-base", (80, 52), color=colors[1])
         
     # Error
     directional_comparison_figure(colors, fontsize, ax=ax[2,1], case="high-ti", tuning="sowfa-nrel", plottype="error")
     ax[2,1].annotate("Base", (130, -4.5), color=colors[3])
     ax[2,1].annotate("Optimized", (130, -6.5), color=colors[2])
     directional_comparison_figure(colors, fontsize, ax=ax[2,2], case="low-ti", tuning="sowfa-nrel", plottype="error")
-    ax[2,2].annotate("Base", (130, -0.4), color=colors[3])
-    ax[2,2].annotate("Optimized", (130, -2.7), color=colors[2])
+    ax[2,2].annotate("Base", (130, -2.2), color=colors[3])
+    ax[2,2].annotate("Optimized", (130, -6), color=colors[2])
 
     # Improvement
     directional_comparison_figure(colors, fontsize, ax=ax[3,1], case="high-ti", tuning="sowfa-nrel", plottype="improvement")
     ax[3,1].annotate("SOWFA", (91, 9), color=colors[3])
-    ax[3,1].annotate("BP", (160, 6.8), color=colors[2])
+    ax[3,1].annotate("BP", (160, 6), color=colors[2])
     directional_comparison_figure(colors, fontsize, ax=ax[3,2], case="low-ti", tuning="sowfa-nrel", plottype="improvement")
-    ax[3,2].annotate("SOWFA", (83, 10), color=colors[3])
-    ax[3,2].annotate("BP", (160, 8.8), color=colors[2])
+    ax[3,2].annotate("SOWFA", (106, 10.5), color=colors[3])
+    ax[3,2].annotate("BP", (180, 8.4), color=colors[2])
 
     # add x label 
     ax[3,1].set(xlabel="Direction (degrees)", xticks=10:60:360)
@@ -1024,11 +1037,11 @@ function directional_comparison_figure_compound(colors, fontsize; showfigs=false
 
     # add y label 
     ax[1,1].set(ylabel="Power (MW)", xticks=10:60:360, yticks=50:2:66, ylim=[50,66])
-    ax[1,2].set(xticks=10:60:360, yticks=50:2:66)
-    ax[2,1].set(ylabel="Power Error (%)", xticks=10:60:360, yticks=-10:2:2, ylim=[-10,2])
-    ax[2,2].set(xticks=10:60:360, yticks=-10:2:2)
+    ax[1,2].set(xticks=10:60:360, yticks=50:2:66, ylim=[50,66])
+    ax[2,1].set(ylabel="Power Error (%)", xticks=10:60:360, yticks=-10:2:0, ylim=[-10,0])
+    ax[2,2].set(xticks=10:60:360, yticks=-10:2:0, ylim=[-10,0])
     ax[3,1].set(ylabel="Power Improvement (%)", xticks=10:60:360, yticks=0:2:16, ylim=[0,16])
-    ax[3,1].set(xticks=10:60:360, yticks=0:2:16)
+    ax[3,1].set(xticks=10:60:360, yticks=0:2:16, ylim=[0,16])
 
     # add column titles
     ax[1,1].set(title="High-TI")
@@ -1037,7 +1050,7 @@ function directional_comparison_figure_compound(colors, fontsize; showfigs=false
     # add subfigure labels
     i=97
     for axi in [ax[1,:]; ax[2,:]; ax[3,:]]
-        axi.annotate("($(Char(i)))", xy=(0.05, 0.05), xycoords="axes fraction")
+        axi.annotate("($(Char(i)))", xy=(0.05, 0.95), xycoords="axes fraction")
         i += 1
     end
     plt.tight_layout()
@@ -1050,7 +1063,7 @@ function directional_comparison_figure_compound(colors, fontsize; showfigs=false
         plt.savefig(image_directory*image_name*"power"*".pdf", transparent=true)
     end
 
-    fig, ax = plt.subplots(3, 2, figsize=[8,9], sharex="col", sharey="row")
+    fig, ax = plt.subplots(3, 2, figsize=figsize, sharex="col", sharey="row")
     # Wake Loss
     directional_comparison_figure(colors, fontsize, ax=ax[1,1], case="high-ti", tuning="sowfa-nrel", plottype="wakeloss")
     ax[1,1].annotate("SOWFA-optimized", (21, 5.5), color=colors[3])
@@ -1058,10 +1071,10 @@ function directional_comparison_figure_compound(colors, fontsize; showfigs=false
     ax[1,1].annotate("BP-optimized", (49.6, 9.9), color=colors[4])
     ax[1,1].annotate("BP-base", (97, 18), color=colors[1])
     directional_comparison_figure(colors, fontsize, ax=ax[1,2], case="low-ti", tuning="sowfa-nrel", plottype="wakeloss")
-    ax[1,2].annotate("SOWFA-optimized", (160, 9.2), color=colors[3])
+    ax[1,2].annotate("SOWFA-optimized", (160, 8.7), color=colors[3])
     ax[1,2].annotate("SOWFA-base", (170, 18), color=colors[2])
-    ax[1,2].annotate("BP-optimized", (113, 16), color=colors[4])
-    ax[1,2].annotate("BP-base", (95, 22), color=colors[1])
+    ax[1,2].annotate("BP-optimized", (40, 16), color=colors[4])
+    ax[1,2].annotate("BP-base", (95, 22.5), color=colors[1])
 
     # Annual Directional Energy Loss
     directional_comparison_figure(colors, fontsize, ax=ax[2,1], case="high-ti", tuning="sowfa-nrel", plottype="annualenergyloss")
@@ -1072,8 +1085,8 @@ function directional_comparison_figure_compound(colors, fontsize; showfigs=false
     ax[3,1].annotate("SOWFA", (130, 5), color=colors[3])
     ax[3,1].annotate("BP", (212, 5), color=colors[2])
     directional_comparison_figure(colors, fontsize, ax=ax[3,2], case="low-ti", tuning="sowfa-nrel",  plottype="annualenergylossincrease")
-    ax[3,2].annotate("SOWFA", (122, 5), color=colors[3])
-    ax[3,2].annotate("BP", (199, 5), color=colors[2])
+    ax[3,2].annotate("SOWFA", (112, 5), color=colors[3])
+    ax[3,2].annotate("BP", (190, 5), color=colors[2])
 
     # add x labels and ticks
     ax[1,1].set(xticks=10:60:360)
@@ -1120,7 +1133,7 @@ end
 
 function turbine_comparison_figures(colors, fontsize; ax1=nothing, ax2=nothing, showfigs=false, savefigs=false, image_directory="images/", image_name="turbine-comparison", case="low-ti", tuning="alldirections")
     
-    function plot_turbine_heatmap(data, winddirections, vmin, vmax; ax=nothing, wake_count=nothing, drawcbar=true)
+    function plot_turbine_heatmap(data, winddirections, vmin, vmax, fontsize; ax=nothing, wake_count=nothing, drawcbar=true)
 
         # number of turbines in the farm
         nturbines = 38
@@ -1169,9 +1182,14 @@ function turbine_comparison_figures(colors, fontsize; ax1=nothing, ax2=nothing, 
         rowlabels = convert.(Int64, round.((winddirections), digits=0))
 
         # create heatmap
-        im, cbar = heatmap(data, rowlabels, 1:nturbines, ax=ax, edgecolors = edgecolors,
+        im, cbar = heatmap(data, rowlabels, 1:nturbines, fontsize, ax=ax, edgecolors = edgecolors,
                 cbarlabel="Turbine power error as percent of maximum SOWFA turbine power", cbar_kw=d,
                 use_cbar=drawcbar)
+
+        # adjust tick label size in cbar
+        if cbar !== nothing
+            cbar.ax.tick_params(labelsize=fontsize)
+        end
 
         # remove upper and right bounding box
         ax.spines["right"].set_visible(false)
@@ -1229,8 +1247,10 @@ function turbine_comparison_figures(colors, fontsize; ax1=nothing, ax2=nothing, 
         layoutid = 83
         n = 4
     elseif case == "low-ti"
-        layoutid = 252
-        n = 2
+        # layoutid = 252
+        layoutid = 385
+        # n = 2
+        n = 3
     end
 
     # load wake data 
@@ -1287,7 +1307,7 @@ function turbine_comparison_figures(colors, fontsize; ax1=nothing, ax2=nothing, 
         # println(sumterm)
     end
     # plot error on heatmap
-    plot_turbine_heatmap(data, winddf.d, vmin, vmax; ax=ax1)
+    plot_turbine_heatmap(data, winddf.d, vmin, vmax, fontsize; ax=ax1)
 
     if savefigs
         if !drawcbar2
@@ -1301,7 +1321,7 @@ function turbine_comparison_figures(colors, fontsize; ax1=nothing, ax2=nothing, 
     data = convert.(Int64, round.(turberror.*100, digits=0))
 
     # plot error on heatmap
-    plot_turbine_heatmap(data, winddf.d, vmin, vmax, ax=ax2, drawcbar=drawcbar2)
+    plot_turbine_heatmap(data, winddf.d, vmin, vmax, fontsize, ax=ax2, drawcbar=drawcbar2)
 
     if savefigs
         if !drawcbar2
@@ -1325,21 +1345,18 @@ function turbine_comparison_figures_compound(colors, fontsize; showfigs=false, s
     turbine_comparison_figures(colors, fontsize, ax1=ax[1], ax2=ax[2], savefigs=savefigs, showfigs=showfigs, case=case, tuning="sowfa-nrel")
     
     # format figure
-    ax[1].set(ylabel="Wind Direction (degrees)", xlabel="Turbine Index")
+    ax[1].set_xlabel("Turbine Index", fontsize=fontsize)
+    ax[1].set_ylabel("Wind Direction (degrees)", fontsize=fontsize)
     ax[1].xaxis.set_label_position("top") 
-    if case == "high-ti"
-        ax[1].set_title("(a) High-TI Base")
-    elseif case == "low-ti"
-        ax[1].set_title("(a) Low-TI Base")
-    end
     
-    ax[2].set(ylabel="Wind Direction (degrees)", xlabel="Turbine Index")
+    case == "high-ti" && ax[1].set_title("(a) High-TI Base", fontsize=fontsize*1.1)
+    case == "low-ti" && ax[1].set_title("(a) Low-TI Base", fontsize=fontsize*1.1)
+    
+    ax[2].set_xlabel("Turbine Index", fontsize=fontsize)
+    ax[2].set_ylabel("Wind Direction (degrees)", fontsize=fontsize)
     ax[2].xaxis.set_label_position("top") 
-    if case == "high-ti"
-        ax[2].set_title("(b) High-TI Optimized")
-    elseif case == "low-ti"
-        ax[2].set_title("(b) Low-TI Optimized")
-    end
+    case == "high-ti" && ax[2].set_title("(b) High-TI Optimized", fontsize=fontsize*1.1)
+    case == "low-ti" && ax[2].set_title("(b) Low-TI Optimized", fontsize=fontsize*1.1)
 
     plt.tight_layout()
 
@@ -1618,7 +1635,7 @@ function sunflower_points(n, alpha=1.0)
 end
 
 function turbine_layouts(colors ;ax=nothing, rotor_diameter=126.4,les_side=5000,
-                                    fontsize=10, numbers=true, lesborder=true, hexagons=true, 
+                                    fontsize=10, numbers=true, lesborder=true, hexagons=false, 
                                     case="low-ti", tuning="sowfa-nrel", showfigs=false, savefigs=false,
                                     iter="base", layoutid=1, n=1, gen="angle-each-circle",
                                     compound=true, annotate=false)
@@ -1700,8 +1717,8 @@ function turbine_layouts(colors ;ax=nothing, rotor_diameter=126.4,les_side=5000,
             turbsouter = [25,23]
             turbsinner = [17,15]
         elseif case == "low-ti"
-            turbsouter = [35,33]
-            turbsinner = [8,18]
+            turbsouter = [36,34]
+            turbsinner = [11,9]
         end
 
         # get line vectors
@@ -1730,7 +1747,10 @@ function turbine_layouts(colors ;ax=nothing, rotor_diameter=126.4,les_side=5000,
         # get rotation angles to sides
         betaouter = atan(vdouter[1]/vdouter[2])
         betainner = atan(vdinner[1]/vdinner[2])
-        
+        if case == "low-ti"
+            betainner = 25*pi/180.0
+        end
+
         # get hex radius
         router = douter/cos(baserot)
         rinner = dinner/cos(baserot)
@@ -1738,7 +1758,8 @@ function turbine_layouts(colors ;ax=nothing, rotor_diameter=126.4,les_side=5000,
         # get hex rotations 
         thetaouter = baserot - betaouter
         thetainner = baserot - betainner
-        # println(thetaouter)
+
+            # println(thetaouter)
         # create rectanguler patches
         hexouter = plt.matplotlib.patches.RegularPolygon((cx, cy), 6, radius=router, orientation=thetaouter, fill=nothing, color=colors[1])
         hexinner = plt.matplotlib.patches.RegularPolygon((cx, cy), 6, radius=rinner, orientation=thetainner, fill=nothing, color=colors[1])
@@ -1753,7 +1774,7 @@ function turbine_layouts(colors ;ax=nothing, rotor_diameter=126.4,les_side=5000,
 
         # print angles
         println("Beta Outer: $(betaouter*180/pi)")
-        println("Beta Inner: $(betaouter*180/pi)")
+        println("Beta Inner: $(betainner*180/pi)")
         println("Beta 10: $(10)")
 
         # add 10 degree rotation line
@@ -1847,9 +1868,13 @@ function turbine_layouts_compound_appendix(colors; fontsize=10, showfigs=false, 
     ax[1,1].set(ylabel="High-TI")
     
     # low ti
+    # layoutid = 252
+    # n = 2
+    layoutid = 385
+    n = 3
     turbine_layouts(colors ;ax=ax[2,1], fontsize=fontsize, iter="base", layoutid=1, case="low-ti")
-    turbine_layouts(colors ;ax=ax[2,2], fontsize=fontsize, iter="start", layoutid=252, n=2, case="low-ti")
-    turbine_layouts(colors ;ax=ax[2,3], fontsize=fontsize, iter="opt", layoutid=252, n=2, case="low-ti")
+    turbine_layouts(colors ;ax=ax[2,2], fontsize=fontsize, iter="start", layoutid=layoutid, n=n, case="low-ti")
+    turbine_layouts(colors ;ax=ax[2,3], fontsize=fontsize, iter="opt", layoutid=layoutid, n=n, case="low-ti")
     ax[2,1].set(ylabel="Low-TI")
 
     # add overhead labels 
@@ -1898,7 +1923,11 @@ function turbine_layouts_compound_body(colors; fontsize=10, showfigs=false, save
     turbine_layouts(colors ;ax=ax[1], fontsize=fontsize, iter="opt", layoutid=83, n=4, case="high-ti", annotate=true)
     
     # low ti
-    turbine_layouts(colors ;ax=ax[2], fontsize=fontsize, iter="opt", layoutid=252, n=2, case="low-ti")
+    # layoutid = 252
+    # n = 2
+    layoutid = 385
+    n = 3
+    turbine_layouts(colors ;ax=ax[2], fontsize=fontsize, iter="opt", layoutid=layoutid, n=n, case="low-ti")
     
     # add labels
     xtxtloc = 2500
@@ -1939,7 +1968,11 @@ function turbine_layouts_compound_hexagons(colors; fontsize=10, showfigs=false, 
     turbine_layouts(colors ;ax=ax[1], fontsize=fontsize, iter="opt", layoutid=83, n=4, case="high-ti", annotate=false, lesborder=false, numbers=false, hexagons=true)
     
     # low ti
-    turbine_layouts(colors ;ax=ax[2], fontsize=fontsize, iter="opt", layoutid=252, n=2, case="low-ti", annotate=false, lesborder=false, numbers=false, hexagons=true)
+    # layoutid = 252
+    # n = 2
+    layoutid = 385
+    n = 3
+    turbine_layouts(colors ;ax=ax[2], fontsize=fontsize, iter="opt", layoutid=layoutid, n=n, case="low-ti", annotate=false, lesborder=false, numbers=false, hexagons=true)
     
     # add windrose data
 
@@ -2127,14 +2160,15 @@ function plot_results_distribution(colors; savefigs=false, showfigs=false, fonts
 
     # load data 
     high_ti_data = DataFrame(CSV.File("./image-data/power/multi-start-distributions/results-distribution-high-ti-4.csv", skipto=2))
-    low_ti_data = DataFrame(CSV.File("./image-data/power/multi-start-distributions/results-distribution-low-ti-1.csv", skipto=2))
+    low_ti_data = DataFrame(CSV.File("./image-data/power/multi-start-distributions/results-distribution-low-ti-3.csv", skipto=2))
     
     # generate figure
     fig, ax = plt.subplots(1,2, sharey=true, sharex=true, figsize=(8,3))
 
     # select representative ids 
     high_ti_opt_layout_id = 83
-    low_ti_best_layout_id = 252
+    # low_ti_best_layout_id = 252
+    low_ti_best_layout_id = 385
 
     # plot histogram 
     bins = 400:1:500
@@ -2142,7 +2176,7 @@ function plot_results_distribution(colors; savefigs=false, showfigs=false, fonts
     optfacecolor = 2
     baseedgecolor = 3
     bestedgecolor = 4
-    lw = 0.75
+    lw = 1.0
 
     # plot high-ti start AEPs
     (n, binedges, patches) = ax[1].hist(high_ti_data[!, :aepib], label="Start AEP", color=colors[startfacecolor],bins=bins)
@@ -2254,7 +2288,7 @@ function make_images()
     
     # directional_comparison_figure_compound(colors, fontsize, showfigs=showfigs, savefigs=savefigs)
 
-    # turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel")
+    turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel")
     # turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel")
     
     # plot_results_distribution(colors; savefigs=savefigs, showfigs=showfigs, fontsize=fontsize)
@@ -2266,7 +2300,7 @@ function make_images()
 
     # turbine_layouts_compound_appendix(colors, fontsize=fontsize, showfigs=showfigs, savefigs=savefigs)
 
-    turbine_layouts_compound_hexagons(colors, fontsize=fontsize, showfigs=showfigs, savefigs=savefigs)
+    # turbine_layouts_compound_hexagons(colors, fontsize=fontsize, showfigs=showfigs, savefigs=savefigs)
 
     # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
 
