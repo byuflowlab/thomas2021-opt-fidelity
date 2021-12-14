@@ -1,7 +1,7 @@
 import FLOWFarm; const ff = FLOWFarm
 using Statistics
 
-function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layoutid=1, nrotorpoints=1, alpha=0, layoutdir="../inputfiles/farms/startinglayouts/individual/", lspacing=3.0)
+function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layoutid=1, nrotorpoints=1, alpha=0, layoutdir="../inputfiles/farms/startinglayouts/individual/", lspacing=3.0, basedirs=12)
     # set initial turbine x and y locations
     diam = 126.4
     if layoutid == 1
@@ -43,7 +43,7 @@ function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layouti
     ambient_ti = mean(tunedti)
     
     # set flow parameters
-    winddata = readdlm("../inputfiles/wind/windrose_nantucket_12dir.txt", ' ', skipstart=1)
+    winddata = readdlm("../inputfiles/wind/windrose_nantucket_$(basedirs)dir.txt", ' ', skipstart=1)
     winddirections = winddata[:,1].*pi./180.0
     nstates = length(winddirections)
     windspeeds = zeros(nstates) .+ mean(tunedwindspeeds) #tunedwindspeeds  #zeros(nstates) .+ mean(tunedwindspeeds) #zeros(length(winddirections)) .+ 7.99 # winddata[:,2]
