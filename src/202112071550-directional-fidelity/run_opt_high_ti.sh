@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1   # number of processor cores (i.e. tasks)
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --mem-per-cpu=4G   # memory per CPU core
-#SBATCH -J "LES low-ti dir fidelity"   # job name
+#SBATCH -J "LES high-ti dir fidelity"   # job name
 #SBATCH --array=0-16     # job array of size 200
 
 echo ${SLURM_ARRAY_TASK_ID}
