@@ -10,6 +10,7 @@ using DelimitedFiles
 using LaTeXStrings
 import VectorizedRoutines; const ml = VectorizedRoutines.Matlab
 using LinearAlgebra
+using Query
 
 function custum_color_map(;idx=[3, 1, 4])
     colors = [colorant"#BDB8AD", colorant"#85C0F9", colorant"#0F2080", colorant"#F5793A", colorant"#A95AA1", colorant"#382119"]
@@ -2266,6 +2267,88 @@ function plot_results_distribution(colors; savefigs=false, showfigs=false, fonts
     end
 end
 
+function directional_fidelity(colors, case; savefigs=false, showfigs=false, fontsize=10)
+
+    # load data #aepi,aepf,aepib,aepfb,info,time,fcalls,ndirs
+    directory = "image-data/directional-fidelity/"
+    df = DataFrame(CSV.File(directory*"combined-results-no-layouts-$case.csv", header=true))
+    
+    # direction bins
+    dirbins= [5 10 15 20 30 40 50 70 90 110 140 170 200 240 280 320 360]
+    
+    # plot average opt AEP vs bin count
+    fig, ax = plt.subplots(1,2,sharey=true, figsize=(8,3))
+
+    # plot average opt aep
+    aveaepstartfull = []
+    aveaepstartlow = []
+    aveaepoptfull = []
+    aveaepoptlow = []
+    for dir in dirbins
+        x = df |>@filter(_.ndirs==dir) |> DataFrame
+        push!(aveaepstartfull, sum(x[!, :aepib])/length(x[!, :aepib]))
+        push!(aveaepstartlow, sum(x[!, :aepi])/length(x[!, :aepi]))
+        push!(aveaepoptfull, sum(x[!, :aepfb])/length(x[!, :aepfb]))
+        push!(aveaepoptlow, sum(x[!, :aepf])/length(x[!, :aepf]))
+    end
+    
+    # plot all data points
+    ax[1].scatter(df[!, :ndirs], df[!, :aepib], color=colors[1], label="AEP data points: full fidelity")
+    ax[1].scatter(df[!, :ndirs], df[!, :aepi], color=colors[2], label="AEP data points: low fidelity")
+
+    ax[2].scatter(df[!, :ndirs], df[!, :aepfb], color=colors[1], label="AEP data points: full fidelity")
+    ax[2].scatter(df[!, :ndirs], df[!, :aepf], color=colors[2], label="AEP data points: low fidelity")
+
+    # plot averages 
+    ax[1].plot(dirbins[1,:], aveaepstartfull, color=colors[4], label="Average AEP: full fidelity")
+    ax[1].plot(dirbins[1,:], aveaepstartlow, color=colors[3], label="Average AEP: low fidelity")
+
+    ax[2].plot(dirbins[1,:], aveaepoptfull, color=colors[4], label="Average AEP: full fidelity")
+    ax[2].plot(dirbins[1,:], aveaepoptlow, color=colors[3], label="Average AEP: low fidelity")
+
+    # axis labels 
+    ax[1].set_xlabel("Number of Wind Directions in Optimization")
+    ax[2].set_xlabel("Number of Wind Directions in Optimization")
+    ax[1].set_ylabel("Optimized AEP (GW h)")
+    
+    # titles 
+    ax[1].set_title("(a) Starting Layouts")
+    ax[2].set_title("(b) Optimizaed")
+
+    # legend 
+    # ax[1].legend(frameon=false)
+    ax[2].legend(frameon=false)
+
+    # formatting
+    for axi in ax
+        axi.set(ylim=[460, 560], xticks=0:50:360)
+        axi.spines["right"].set_visible(false)
+        axi.spines["top"].set_visible(false)
+        axi.spines["bottom"].set_visible(true)
+        axi.spines["left"].set_visible(true)
+        axi.tick_params(
+        axis="y",          # changes apply to the x-axis
+        which="both",      # both major and minor ticks are affected
+        left=true,      # ticks along the bottom edge are off
+        right=false,         # ticks along the top edge are off
+        labelleft=true) # labels along the bottom edge are off
+    end
+
+
+    plt.tight_layout()
+
+    # save figure
+    if savefigs
+        plt.savefig("images/directional-fidelity.pdf", transparent=true)
+    end
+
+    # show figure
+    if showfigs
+        plt.show()
+    end
+
+end
+
 function make_images()
 
     fontsize = 8
@@ -2288,7 +2371,7 @@ function make_images()
     
     # directional_comparison_figure_compound(colors, fontsize, showfigs=showfigs, savefigs=savefigs)
 
-    turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel")
+    # turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti", tuning="sowfa-nrel")
     # turbine_comparison_figures_compound(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti", tuning="sowfa-nrel")
     
     # plot_results_distribution(colors; savefigs=savefigs, showfigs=showfigs, fontsize=fontsize)
@@ -2305,6 +2388,8 @@ function make_images()
     # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
 
     # windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
+
+    directional_fidelity(colors, "high-ti"; savefigs=savefigs, showfigs=showfigs)
     
 end
 

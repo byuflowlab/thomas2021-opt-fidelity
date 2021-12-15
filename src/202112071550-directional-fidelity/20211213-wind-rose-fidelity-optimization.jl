@@ -148,20 +148,20 @@ function wind_farm_opt!(g, x, params; xhistory=nothing)
     return AEP #, dAEP_dx, dcdx, fail
 end
 
-function set_up_base_params(params; nrotorpoints=100, alpha=0)
+function set_up_base_params(params; nrotorpoints=100, alpha=0, ndirectionbins=360)
 
-    params_base = deepcopy(params)
+    params_new = deepcopy(params)
 
     # set sample points 
     rotor_points_y, rotor_points_z = ff.rotor_sample_points(nrotorpoints, method="sunflower", pradius=1, alpha=alpha)
 
-    params_base.rotor_points_y = rotor_points_y
-    params_base.rotor_points_z = rotor_points_z
+    params_new.rotor_points_y = rotor_points_y
+    params_new.rotor_points_z = rotor_points_z
 
     # rediscretize wind rose
-    params_base.wind_resource = ff.rediscretize_windrose(params.wind_resource, 360, start=0.0, averagespeed=true)
+    params_new.wind_resource = ff.rediscretize_windrose(params.wind_resource, ndirectionbins, start=0.0, averagespeed=true)
 
-    return params_base
+    return params_new
 
 end
 
@@ -204,8 +204,11 @@ function run_optimization(layoutid, ndirectionbins; case="high-ti", tuning="sowf
     # initialize design variable array
     x0 = [copy(turbine_x);copy(turbine_y)]
     
-    params_base = set_up_base_params(params, alpha=alpha, nrotorpoints=100)
+    params_base = set_up_base_params(params, alpha=alpha, nrotorpoints=100, ndirectionbins=360)
+    params_calc = set_up_base_params(params, alpha=alpha, nrotorpoints=100, ndirectionbins=ndirectionbins)
+    
     aep_init_base = aep_wrapper(x0, params_base)[1]
+    aep_init_calc = aep_wrapper(x0, params_calc)[1]
 
     # print stuff if desired
     if verbose
@@ -462,6 +465,7 @@ function run_optimization(layoutid, ndirectionbins; case="high-ti", tuning="sowf
     aep_final = aep_wrapper(xopt, params)
 
     aep_final_base = aep_wrapper([copy(turbine_x);copy(turbine_y)], params_base)
+    aep_final_calc = aep_wrapper([copy(turbine_x);copy(turbine_y)], params_calc)
 
     # print optimization results
     if verbose
@@ -490,7 +494,7 @@ function run_optimization(layoutid, ndirectionbins; case="high-ti", tuning="sowf
         plt.show()
     end
 
-    return xopt, aep_init, aep_final, aep_init_base, aep_final_base, info, out, clk, fcalls
+    return xopt, aep_init, aep_final, aep_init_base, aep_final_base, aep_init_calc, aep_final_calc, info, out, clk, fcalls
 end
 
 function run_optimization_series(nruns, case, tuning, ndirectionbins; outdir="./", layoutgen="individual", wec=true, lspacing=3.0, firstrun=1, verbose=false, plotresults=false, savehistory=true)
@@ -502,6 +506,8 @@ function run_optimization_series(nruns, case, tuning, ndirectionbins; outdir="./
     aepfinaldata = []
     aepinitbasedata = []
     aepfinalbasedata = []
+    aepinitcalcdata = [] # ndirs, 100 rotor sample points
+    aepfinalcalcdata = [] # ndirs, 100 rotor sample points
     infodata = []
     outdata = []
     timedata = []
@@ -509,18 +515,31 @@ function run_optimization_series(nruns, case, tuning, ndirectionbins; outdir="./
 
     for i = firstrun:nruns+firstrun-1
         println("running optimization $i")
-        xopt, aepi, aepf, aepib, aepfb, info, out, clk, fcalls = run_optimization(i, ndirectionbins; case=case, tuning=tuning, plotresults=plotresults, verbose=verbose, wec=wec, nrotorpoints=1, alpha=0, savehistory=savehistory, optimize=true, outdir=outdir, layoutdir=layoutdir, lspacing=lspacing)
+        xopt, aepi, aepf, aepib, aepfb, aepic, aepfc, info, out, clk, fcalls = run_optimization(i, ndirectionbins; case=case, tuning=tuning, plotresults=plotresults, verbose=verbose, wec=wec, nrotorpoints=1, alpha=0, savehistory=savehistory, optimize=true, outdir=outdir, layoutdir=layoutdir, lspacing=lspacing)
         push!(xoptdata, xopt)
         push!(aepinitdata, aepi)
         push!(aepfinaldata, aepf)
         push!(aepinitbasedata, aepib)
         push!(aepfinalbasedata, aepfb)
+        push!(aepinitcalcdata, aepic)
+        push!(aepfinalcalcdata, aepfc)
         push!(infodata, info)
         push!(outdata, out)
         push!(timedata, clk)
         push!(fcalldata, fcalls)
-        df = DataFrame(xopt=xoptdata, aepi=aepinitdata, aepf=aepfinaldata, aepib=aepinitbasedata, aepfb=aepfinalbasedata, info=infodata, out=outdata, time=timedata, fcalls=fcalldata, ndirs=ndirectionbins)
+        df = DataFrame(xopt=xoptdata, aepi=aepinitdata, aepf=aepfinaldata, aepib=aepinitbasedata, aepfb=aepfinalbasedata, aepic=aepinitcalcdata, aepfc=aepfinalcalcdata , info=infodata, out=outdata, time=timedata, fcalls=fcalldata, ndirs=ndirectionbins)
         CSV.write(outdir*"opt-overall-results-$case-$tuning-startrun$firstrun-nruns$nruns-dirbins$ndirectionbins.csv", df)
     end
 
+end
+
+function run_direction_fidelity_study(;runsperbin=10)
+    dirbins=[5 10 15 20 30 40 50 70 90 110 140 170 200 240 280 320 360]
+
+    for dir in dirbins
+        run_optimization_series(runsperbin, "low-ti", "sowfa-nrel", dir; outdir="./low-ti/", layoutgen="angle-each-circle", wec=true, lspacing=5.0, verbose=false, plotresults=false, savehistory=true)
+    end
+    for dir in dirbins
+        run_optimization_series(runsperbin, "high-ti", "sowfa-nrel", dir; outdir="./high-ti/", layoutgen="angle-each-circle", wec=true, lspacing=5.0, verbose=false, plotresults=false, savehistory=true)
+    end
 end
