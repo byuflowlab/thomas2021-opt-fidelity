@@ -513,6 +513,7 @@ function run_optimization_series(nruns, case, tuning, ndirectionbins; outdir="./
     timedata = []
     fcalldata = []
 
+    println("Case: $case, Directions: $ndirectionbins")
     for i = firstrun:nruns+firstrun-1
         println("running optimization $i")
         xopt, aepi, aepf, aepib, aepfb, aepic, aepfc, info, out, clk, fcalls = run_optimization(i, ndirectionbins; case=case, tuning=tuning, plotresults=plotresults, verbose=verbose, wec=wec, nrotorpoints=1, alpha=0, savehistory=savehistory, optimize=true, outdir=outdir, layoutdir=layoutdir, lspacing=lspacing)
