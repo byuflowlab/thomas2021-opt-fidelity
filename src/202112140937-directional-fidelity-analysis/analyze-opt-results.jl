@@ -22,7 +22,7 @@ function combine_datafiles(case; directory="/Users/jaredthomas/OneDrive - Brigha
     CSV.write(directory*"combined-results-"*case*".csv", df)
 
     # save results without the layouts 
-    CSV.write(directory*"combined-results-no-layouts-"*case*".csv", df[!, [:aepi, :aepf, :aepib, :aepfb, :info, :time, :fcalls, :ndirs]])
+    CSV.write(directory*"combined-results-no-layouts-"*case*".csv", df[!, [:id, :aepi, :aepf, :aepib, :aepfb, :aepic, :aepfc, :info, :time, :fcalls, :ndirs]])
 
 end
 

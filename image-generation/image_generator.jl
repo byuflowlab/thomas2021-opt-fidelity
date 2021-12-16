@@ -2277,64 +2277,66 @@ function directional_fidelity(colors, case; savefigs=false, showfigs=false, font
     dirbins= [5 10 15 20 30 40 50 70 90 110 140 170 200 240 280 320 360]
     
     # plot average opt AEP vs bin count
-    fig, ax = plt.subplots(1,2,sharey=true, figsize=(8,3))
+    fig, ax = plt.subplots(1, figsize=(6,3))
 
     # plot average opt aep
     aveaepstartfull = []
     aveaepstartlow = []
     aveaepoptfull = []
     aveaepoptlow = []
+    maxaepincreasefull = []
+    minaepincreasefull = []
+    maxaepincreaselow = []
+    minaepincreaselow = []
     for dir in dirbins
         x = df |>@filter(_.ndirs==dir) |> DataFrame
         push!(aveaepstartfull, sum(x[!, :aepib])/length(x[!, :aepib]))
-        push!(aveaepstartlow, sum(x[!, :aepi])/length(x[!, :aepi]))
+        push!(aveaepstartlow, sum(x[!, :aepic])/length(x[!, :aepic]))
         push!(aveaepoptfull, sum(x[!, :aepfb])/length(x[!, :aepfb]))
-        push!(aveaepoptlow, sum(x[!, :aepf])/length(x[!, :aepf]))
+        push!(aveaepoptlow, sum(x[!, :aepfc])/length(x[!, :aepfc]))
+        push!(maxaepincreasefull, maximum(x[!, :aepfb] .- x[!, :aepib]))
+        push!(minaepincreasefull, minimum(x[!, :aepfb] .- x[!, :aepib]))
+        push!(maxaepincreaselow, maximum(x[!, :aepfc] .- x[!, :aepic]))
+        push!(minaepincreaselow, minimum(x[!, :aepfc] .- x[!, :aepic]))
     end
+
+    # calculate AEP improvement 
+    aveaepincreasefull =  aveaepoptfull - aveaepstartfull
+    aveaepincreaselow =  aveaepoptlow - aveaepstartlow
     
     # plot all data points
-    ax[1].scatter(df[!, :ndirs], df[!, :aepib], color=colors[1], label="AEP data points: full fidelity")
-    ax[1].scatter(df[!, :ndirs], df[!, :aepi], color=colors[2], label="AEP data points: low fidelity")
-
-    ax[2].scatter(df[!, :ndirs], df[!, :aepfb], color=colors[1], label="AEP data points: full fidelity")
-    ax[2].scatter(df[!, :ndirs], df[!, :aepf], color=colors[2], label="AEP data points: low fidelity")
-
+    # ax.fill_between(dirbins[1,:], minaepincreaselow, maxaepincreaselow, alpha=0.2, color=colors[3])
+    # ax.fill_between(dirbins[1,:], minaepincreasefull, maxaepincreasefull, alpha=0.3, color=colors[4])
+    # println(minaepincreasefull)
     # plot averages 
-    ax[1].plot(dirbins[1,:], aveaepstartfull, color=colors[4], label="Average AEP: full fidelity")
-    ax[1].plot(dirbins[1,:], aveaepstartlow, color=colors[3], label="Average AEP: low fidelity")
-
-    ax[2].plot(dirbins[1,:], aveaepoptfull, color=colors[4], label="Average AEP: full fidelity")
-    ax[2].plot(dirbins[1,:], aveaepoptlow, color=colors[3], label="Average AEP: low fidelity")
-
+    yerrfull = [abs.(aveaepincreasefull.-minaepincreasefull), abs.(aveaepincreasefull.-maxaepincreasefull)]
+    yerrlow = [abs.(aveaepincreaselow.-minaepincreaselow), abs.(aveaepincreaselow.-maxaepincreaselow)]
+    ax.errorbar(dirbins[1,:], aveaepincreaselow, yerr=yerrlow, fmt="-", ms=5, color=colors[3], label="Average AEP increase: low fidelity", capsize=2)
+    ax.errorbar(dirbins[1,:], aveaepincreasefull, yerr=yerrfull, fmt="--", ms=5, color=colors[4], label="Average AEP increase: full fidelity")
+    ax.set_xscale("log")
     # axis labels 
-    ax[1].set_xlabel("Number of Wind Directions in Optimization")
-    ax[2].set_xlabel("Number of Wind Directions in Optimization")
-    ax[1].set_ylabel("Optimized AEP (GW h)")
-    
-    # titles 
-    ax[1].set_title("(a) Starting Layouts")
-    ax[2].set_title("(b) Optimizaed")
+    ax.set_xlabel("Number of Wind Directions in Optimization")
+    ax.set_ylabel("AEP Change (GW h)")
 
     # legend 
-    # ax[1].legend(frameon=false)
-    ax[2].legend(frameon=false)
+    # ax.legend(frameon=false)
+    ax.annotate("Optimization wind directions", (33, 13), color=colors[3])
+    ax.annotate("360 wind directions", (33, -3), color=colors[4])
 
     # formatting
-    for axi in ax
-        axi.set(ylim=[460, 560], xticks=0:50:360)
-        axi.spines["right"].set_visible(false)
-        axi.spines["top"].set_visible(false)
-        axi.spines["bottom"].set_visible(true)
-        axi.spines["left"].set_visible(true)
-        axi.tick_params(
-        axis="y",          # changes apply to the x-axis
-        which="both",      # both major and minor ticks are affected
-        left=true,      # ticks along the bottom edge are off
-        right=false,         # ticks along the top edge are off
-        labelleft=true) # labels along the bottom edge are off
-    end
 
-
+    ax.set(ylim=[-10, 50], yticks=-10:10:50)
+    ax.spines["right"].set_visible(false)
+    ax.spines["top"].set_visible(false)
+    ax.spines["bottom"].set_visible(true)
+    ax.spines["left"].set_visible(true)
+    ax.tick_params(
+    axis="y",          # changes apply to the x-axis
+    which="both",      # both major and minor ticks are affected
+    left=true,      # ticks along the bottom edge are off
+    right=false,         # ticks along the top edge are off
+    labelleft=true) # labels along the bottom edge are off
+   
     plt.tight_layout()
 
     # save figure
