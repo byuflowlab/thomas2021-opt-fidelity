@@ -2009,58 +2009,96 @@ function turbine_layouts_compound_hexagons(colors; fontsize=10, showfigs=false, 
     end
 end
 
-function windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave", ax=nothing)
-    
-    f1 = f1./sum(f1)
-    f2 = f2./sum(f2)
-    if maximum(d1) > 100
-        d1 = deg2rad.(d1)
+function windrose(colors; savefigs=false, showfigs=false, fontsize=10)
+    # load data 
+    datafile12 = "../src/inputfiles/wind/windrose_nantucket_12dir.txt"
+    data12 = readdlm(datafile12, skipstart=1)
+    datafile36 = "../src/inputfiles/wind/windrose_nantucket_36dir.txt"
+    data36 = readdlm(datafile36, skipstart=1)
+
+    # initialize figure and axes
+    fig, ax = plt.subplots(1,2,figsize=(8,4),subplot_kw=Dict("projection"=>"polar"))
+
+    # plot wind roses on axes    
+    scalar = 1E2
+    fticks36 = 2:5
+    fticks12 = 5:5:15
+    dlabels=[L"E, $90\degree$","NE",L"N, $0\degree$","NW",L"W, $270\degree$","SW",L"S, $180\degree$ ","SE"]
+    ff.plotwindrose!(ax[1], data36[:,1], data36[:,3]*scalar; dlabels=dlabels, fticks=fticks36, rlabel_position=-22.5, roundingdigit=0,fontsize=fontsize, units="%",kwargs=(:edgecolor=>nothing, :alpha=>1.0, :color=>colors[2]))
+    ff.plotwindrose!(ax[2], data12[:,1], data12[:,3]*scalar; dlabels=dlabels, fticks=fticks12, rlabel_position=-22.5, roundingdigit=0,fontsize=fontsize, units="%",kwargs=(:edgecolor=>nothing, :alpha=>1.0, :color=>colors[2]))
+
+    # format
+    # ax[1].set_thetagrids(frac=1.3)
+    ax[1].tick_params(axis="x", pad=12)
+    ax[2].tick_params(axis="x", pad=12)
+    plt.tight_layout()
+
+    ax[1].set_title("(a)", y=-0.25,fontsize=fontsize)
+    ax[2].set_title("(b)", y=-0.25,fontsize=fontsize)
+
+    # save figure
+    if savefigs
+        plt.savefig("images/windroses.pdf", transparent=true)
     end
-    if maximum(d2) > 100
-        d2 = deg2rad.(d2)
-    end
-    println(wd1)
-    if ax === nothing
-        plt.figure(figsize=(6,3))
-        ax1 = plt.subplot(121,projection="polar")
-        ax2 = plt.subplot(122,projection="polar")
-    elseif length(ax) == 1
-        ax1 = ax 
-    end
-    ndirs1 = length(d1)
-    width1 = 2*pi/ndirs1
 
-    ax1.bar(pi/2 .-d1,f1,width=width1,color=color,alpha=alpha,edgecolor="black")
-    ax1.set_xticks((0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4))
-    ax1.set_xticklabels(("E","NE","N","NW","W","SW","S","SW"),fontsize=fontsize)
-    ax1.set_rgrids((0.04,0.08,0.12),("4%","8%","12%"),angle=-20,fontsize=fontsize)
-    for tick in ax1.yaxis.get_majorticklabels()
-        tick.set_horizontalalignment("center")
-    end
-
-    if ax === nothing
-        ndirs2 = length(d2)
-        width2 = 2*pi/ndirs2
-        ax2.bar(pi/2 .-d2,f2,width=width2,color=color,alpha=alpha,edgecolor="black")
-        ax2.set_xticks((0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4))
-        ax2.set_xticklabels(("E","NE","N","NW","W","SW","S","SW"),fontsize=fontsize)
-        ax2.set_rgrids((0.02,0.035,0.05),("2%","3.5%","5%"),angle=-20,fontsize=fontsize)
-        for tick in ax2.yaxis.get_majorticklabels()
-            tick.set_horizontalalignment("center")
-        end
-
-        ax1.set_title("(a)", y=-0.25,fontsize=fontsize)
-        ax2.set_title("(b)", y=-0.25,fontsize=fontsize)
-
-        plt.subplots_adjust(left=0.05,right=0.95,top=0.9,bottom=0.2)
-
-
-        if filename != "nosave"
-            plt.savefig(filename,transparent=true)
-        end
+    # show figure
+    if showfigs
+        plt.show()
     end
 
 end
+# function windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave", ax=nothing)
+    
+#     f1 = f1./sum(f1)
+#     f2 = f2./sum(f2)
+#     if maximum(d1) > 100
+#         d1 = deg2rad.(d1)
+#     end
+#     if maximum(d2) > 100
+#         d2 = deg2rad.(d2)
+#     end
+#     println(wd1)
+#     if ax === nothing
+#         plt.figure(figsize=(6,3))
+#         ax1 = plt.subplot(121,projection="polar")
+#         ax2 = plt.subplot(122,projection="polar")
+#     elseif length(ax) == 1
+#         ax1 = ax 
+#     end
+#     ndirs1 = length(d1)
+#     width1 = 2*pi/ndirs1
+
+#     ax1.bar(pi/2 .-d1,f1,width=width1,color=color,alpha=alpha,edgecolor="black")
+#     ax1.set_xticks((0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4))
+#     ax1.set_xticklabels(("E","NE","N","NW","W","SW","S","SW"),fontsize=fontsize)
+#     ax1.set_rgrids((0.04,0.08,0.12),("4%","8%","12%"),angle=-20,fontsize=fontsize)
+#     for tick in ax1.yaxis.get_majorticklabels()
+#         tick.set_horizontalalignment("center")
+#     end
+
+#     if ax === nothing
+#         ndirs2 = length(d2)
+#         width2 = 2*pi/ndirs2
+#         ax2.bar(pi/2 .-d2,f2,width=width2,color=color,alpha=alpha,edgecolor="black")
+#         ax2.set_xticks((0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4))
+#         ax2.set_xticklabels(("E","NE","N","NW","W","SW","S","SW"),fontsize=fontsize)
+#         ax2.set_rgrids((0.02,0.035,0.05),("2%","3.5%","5%"),angle=-20,fontsize=fontsize)
+#         for tick in ax2.yaxis.get_majorticklabels()
+#             tick.set_horizontalalignment("center")
+#         end
+
+#         ax1.set_title("(a)", y=-0.25,fontsize=fontsize)
+#         ax2.set_title("(b)", y=-0.25,fontsize=fontsize)
+
+#         plt.subplots_adjust(left=0.05,right=0.95,top=0.9,bottom=0.2)
+
+
+#         if filename != "nosave"
+#             plt.savefig(filename,transparent=true)
+#         end
+#     end
+
+# end
 
 function vertical_slice(colors; savefigs=false, showfigs=false, fontsize=10)
 
@@ -2390,8 +2428,8 @@ function make_images()
     # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
 
     # windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
-
-    directional_fidelity(colors, "high-ti"; savefigs=savefigs, showfigs=showfigs)
+    windrose(colors; savefigs=savefigs, showfigs=showfigs)
+    # directional_fidelity(colors, "high-ti"; savefigs=savefigs, showfigs=showfigs)
     
 end
 
