@@ -59,6 +59,7 @@ function wind_farm_setup(nturbines; case="high-ti", tuning="sowfa-nrel", layouti
     else
         error("Incorrect case ($case) specified")
     end
+    # shearexponent = 0.0
     
     # load power and thrust curves
     cpctdata = readdlm("../inputfiles/turbines/nrel-5mw/NREL5MWCPCT.txt", skipstart=1)

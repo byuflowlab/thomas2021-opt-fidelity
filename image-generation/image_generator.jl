@@ -1932,8 +1932,8 @@ function turbine_layouts_compound_body(colors; fontsize=10, showfigs=false, save
     
     # add labels
     xtxtloc = 2500
-    ax[1].text(xtxtloc,-600.,"(a) High-TI",horizontalalignment="center")
-    ax[2].text(xtxtloc,-600.,"(b) Low-TI",horizontalalignment="center")
+    ax[1].text(xtxtloc,-600.,"(a) High TI",horizontalalignment="center")
+    ax[2].text(xtxtloc,-600.,"(b) Low TI",horizontalalignment="center")
 
     # remove spines
     for axi in ax
@@ -1980,8 +1980,8 @@ function turbine_layouts_compound_hexagons(colors; fontsize=10, showfigs=false, 
 
     # add labels
     xtxtloc = 2500
-    ax[1].text(xtxtloc,-600.,"(a) High-TI",horizontalalignment="center")
-    ax[2].text(xtxtloc,-600.,"(b) Low-TI",horizontalalignment="center")
+    ax[1].text(xtxtloc,-600.,"(a) High TI",horizontalalignment="center")
+    ax[2].text(xtxtloc,-600.,"(b) Low TI",horizontalalignment="center")
 
     # remove spines
     for axi in ax
@@ -2202,7 +2202,7 @@ function plot_results_distribution(colors; savefigs=false, showfigs=false, fonts
     low_ti_data = DataFrame(CSV.File("./image-data/power/multi-start-distributions/results-distribution-low-ti-3.csv", skipto=2))
     
     # generate figure
-    fig, ax = plt.subplots(1,2, sharey=true, sharex=true, figsize=(8,3))
+    fig, ax = plt.subplots(1,2, sharey=false, sharex=true, figsize=(8,3))
 
     # select representative ids 
     high_ti_opt_layout_id = 83
@@ -2270,8 +2270,8 @@ function plot_results_distribution(colors; savefigs=false, showfigs=false, fonts
     ax[2].hist(ones(by)*bx, lw=lw, fc=(0, 0, 0, 0), bins=bins, edgecolor=colors[bestedgecolor])
 
     # format histogram
-    ax[1].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", ylabel="Count", title="(a) High-TI")
-    ax[2].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", title="(b) Low-TI")
+    ax[1].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", ylabel="Count", title="(a) High TI")
+    ax[2].set(xlim=[400,500], ylim=[0,80], xlabel="AEP (GW h)", ylabel="Count", title="(b) Low TI")
     ax[1].legend(frameon=false)
     # ax[2].legend(frameon=false, loc="upper left")
 
@@ -2284,13 +2284,13 @@ function plot_results_distribution(colors; savefigs=false, showfigs=false, fonts
     ax[2].spines["right"].set_visible(false)
     ax[2].spines["top"].set_visible(false)
     ax[2].spines["bottom"].set_visible(true)
-    ax[2].spines["left"].set_visible(false)
-    ax[2].tick_params(
-    axis="y",          # changes apply to the x-axis
-    which="both",      # both major and minor ticks are affected
-    left=false,      # ticks along the bottom edge are off
-    right=false,         # ticks along the top edge are off
-    labelleft=false) # labels along the bottom edge are off
+    ax[2].spines["left"].set_visible(true)
+    # ax[2].tick_params(
+    # axis="y",          # changes apply to the y-axis
+    # which="both",      # both major and minor ticks are affected
+    # left=false,      # ticks along the bottom edge are off
+    # right=false,         # ticks along the top edge are off
+    # labelleft=false) # labels along the bottom edge are off
 
     plt.tight_layout()
 
@@ -2353,13 +2353,13 @@ function directional_fidelity(colors, case; savefigs=false, showfigs=false, font
     ax.errorbar(dirbins[1,:], aveaepincreasefull, yerr=yerrfull, fmt="--", ms=5, color=colors[4], label="Average AEP increase: full fidelity")
     ax.set_xscale("log")
     # axis labels 
-    ax.set_xlabel("Number of Wind Directions in Optimization")
+    ax.set_xlabel(L"Number of Wind Directions used for Optimization ($N_D$)")
     ax.set_ylabel("AEP Change (GW h)")
 
     # legend 
     # ax.legend(frameon=false)
-    ax.annotate("Optimization wind directions", (33, 13), color=colors[3])
-    ax.annotate("360 wind directions", (33, -3), color=colors[4])
+    ax.annotate(L"AEP calculated using $N_D$ wind directions", (14, 20), color=colors[3])
+    ax.annotate("AEP re-calculated using 360 wind directions", (14, -5), color=colors[4])
 
     # formatting
 
@@ -2380,6 +2380,69 @@ function directional_fidelity(colors, case; savefigs=false, showfigs=false, font
     # save figure
     if savefigs
         plt.savefig("images/directional-fidelity.pdf", transparent=true)
+    end
+
+    # show figure
+    if showfigs
+        plt.show()
+    end
+
+end
+
+function design_space_sweep(colors, case; savefigs=false, showfigs=false, fontsize=10)
+
+    # load data for sweep
+    directory = "image-data/design-space-sweep/"
+    df = DataFrame(CSV.File(directory*"design-space-sweep-one-and-one-hundred-samples-$case.csv", header=true))
+    
+    # load data for ideal AEP 
+    directory = "image-data/power/FLOWFarm/"
+    dfp1 = DataFrame(CSV.File(directory*"turbine-power-ff-1pts-$case-sowfa-nrel-layout1-base.txt", header=true))
+    dfp100 = DataFrame(CSV.File(directory*"turbine-power-ff-100pts-$case-sowfa-nrel-layout1-base.txt", header=true))
+    
+    # calculate ideal aep 
+    ideal_aep_1pt = maximum(maximum(eachrow(dfp1)))*365.0*24.0*38*1e-9
+    ideal_aep_100pt = maximum(maximum(eachrow(dfp100)))*365.0*24.0*38*1E-9
+    
+    println(ideal_aep_100pt)
+    # plot average opt AEP vs bin count
+    fig, ax = plt.subplots(2, 2, figsize=(12,6))
+
+    # plot sweep data
+    ax[1,1].plot(df.xpoints, df.xaep1, color=colors[2], label="x1")
+    ax[1,1].plot(df.xpoints, df.xaep100, color=colors[4], label="x100")
+    ax[1,2].plot(df.ypoints, df.yaep1, color=colors[2], label="y1")
+    ax[1,2].plot(df.ypoints, df.yaep100, color=colors[4], label="y100")
+
+    # plot data normalized
+    # normby1 = ideal_aep_1pt
+    # normby100 = ideal_aep_100pt
+    normby1 = maximum(df.xaep1)
+    normby100 = maximum(df.xaep100)
+
+    ax[2,1].plot(df.xpoints, df.xaep1./normby1, color=colors[2], label="x1")
+    ax[2,1].plot(df.xpoints, df.xaep100./normby100, color=colors[4], label="x100")
+    ax[2,2].plot(df.ypoints, df.yaep1./normby1, color=colors[2], label="y1")
+    ax[2,2].plot(df.ypoints, df.yaep100./normby100, color=colors[4], label="y100")
+
+    # 
+
+    for axi in ax 
+        axi.set_xlabel("Distance from center (m)")
+        
+        axi.legend()
+    end
+
+    ax[1,1].set_ylabel("AEP (GW h)")
+    ax[1,2].set_ylabel("AEP (GW h)")
+    ax[2,1].set_ylabel("Normalized AEP")
+    ax[2,2].set_ylabel("Normalized AEP")
+
+
+    plt.tight_layout()
+    # save figure
+    if savefigs
+        plt.savefig("images/design-space-sweep.pdf", transparent=true)
     end
 
     # show figure
@@ -2427,14 +2490,18 @@ function make_images()
 
     # vertical_slice(colors, savefigs=savefigs, showfigs=showfigs)
 
-    # windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
-    windrose(colors; savefigs=savefigs, showfigs=showfigs)
+    # windrose(colors; savefigs=savefigs, showfigs=showfigs)
+
     # directional_fidelity(colors, "high-ti"; savefigs=savefigs, showfigs=showfigs)
+    
+    design_space_sweep(colors, "high-ti"; savefigs=savefigs, showfigs=showfigs)
     
 end
 
 
     ############# obsolete/not used #############
+    # windrose(d1,f1,d2,f2;color="C0",alpha=0.5,fontsize=8,filename="nosave")
+
     # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="low-ti")
     # wind_shear_tuning(colors, fontsize, savefigs=savefigs, showfigs=showfigs, case="high-ti")
     
