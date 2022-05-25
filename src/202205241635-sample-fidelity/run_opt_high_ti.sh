@@ -13,7 +13,7 @@ echo ${SLURM_ARRAY_TASK_ID}
 module load julia
 
 # set up
-dirbins= (1 5 10 20 40 60 80 100)
+dirbins=(1 5 10 20 40 60 80 100)
 
 # run julia
 julia run_opt.jl --firstrun 1 --nruns 100 --case "high-ti" --out-dir "./high-ti/" --dir-bins ${dirbins[${SLURM_ARRAY_TASK_ID}]}
