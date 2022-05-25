@@ -1,6 +1,6 @@
 using ArgParse
 
-include("20211213-wind-rose-fidelity-optimization.jl")
+include("sample-fidelity-optimization.jl")
 
 function parse_commandline()
     s = ArgParseSettings()
