@@ -306,8 +306,8 @@ function run_optimization(layoutid, nrotorpoints; case="high-ti", ndirectionbins
                 "Verify level" => 0,
                 "Major optimality tolerance" => convtol,
                 # "Major iterations limit" => 1E0,
-                "Summary file" => outdir*"ndirs$ndirectionbins-points$nrotorpoints-snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out",
-                "Print file" => outdir*"ndirs$ndirectionbins-points$nrotorpoints-snopt-print-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out"
+                "Summary file" => outdir*"dirs$ndirectionbins-pts$nrotorpoints-snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out",
+                "Print file" => outdir*"dirs$ndirectionbins-pts$nrotorpoints-snopt-print-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out"
             )
 
             # initialize solver
@@ -376,8 +376,8 @@ function run_optimization(layoutid, nrotorpoints; case="high-ti", ndirectionbins
                 "Verify level" => 0,
                 "Major optimality tolerance" => convtol,
                 # "Major iterations limit" => 1E0,
-                "Summary file" => outdir*"ndirs$ndirectionbins-points$nrotorpoints-snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti).out",
-                "Print file" => outdir*"ndirs$ndirectionbins-points$nrotorpoints-snopt-print-$(case)-layout-$(layoutid)-lti-$(lti).out"
+                "Summary file" => outdir*"dirs$ndirectionbins-pts$nrotorpoints-snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti).out",
+                "Print file" => outdir*"dirs$ndirectionbins-pts$nrotorpoints-snopt-print-$(case)-layout-$(layoutid)-lti-$(lti).out"
             )
 
             # initialize solver
