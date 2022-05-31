@@ -148,7 +148,7 @@ function wind_farm_opt!(g, x, params; xhistory=nothing)
     return AEP #, dAEP_dx, dcdx, fail
 end
 
-function set_up_base_params(params; nrotorpoints=100, alpha=0)
+function set_up_base_params(params; nrotorpoints=100, alpha=0)   
 
     params_new = deepcopy(params)
 
@@ -162,7 +162,13 @@ function set_up_base_params(params; nrotorpoints=100, alpha=0)
 
 end
 
-function run_optimization(layoutid, nrotorpoints; case="high-ti", tuning="sowfa-nrel", plotresults=false, verbose=true, wec=true, alpha=0, savehistory=false, optimize=true, outdir="./", layoutdir="../inputfiles/farms/startinglayouts/individual/", lspacing=3.0)
+function run_optimization(layoutid, nrotorpoints; case="high-ti", ndirectionbins=12, tuning="sowfa-nrel", plotresults=false, verbose=true, wec=true, alpha=0, savehistory=false, optimize=true, outdir="./", layoutdir="../inputfiles/farms/startinglayouts/individual/", lspacing=3.0)
+
+    if ndirectionbins == 12
+        basedirs = 12
+    else
+        basedirs = 36
+    end
 
     # get wind farm setup
     diam, turbine_x, turbine_y, turbine_z, turbine_yaw, rotor_diameter, hub_height, cut_in_speed, 
@@ -170,7 +176,12 @@ function run_optimization(layoutid, nrotorpoints; case="high-ti", tuning="sowfa-
     rotor_points_y, rotor_points_z, winddirections, windspeeds, windprobabilities, 
     air_density, ambient_ti, shearexponent, ambient_tis, measurementheight, power_models, 
     ct_models, wind_shear_model, sorted_turbine_index, wind_resource, wakedeficitmodel, 
-    wakedeflectionmodel, wakecombinationmodel, localtimodel, model_set = wind_farm_setup(38, case=case, tuning=tuning, layoutid=layoutid, nrotorpoints=nrotorpoints, alpha=alpha, layoutdir=layoutdir, lspacing=lspacing, basedirs=36)
+    wakedeflectionmodel, wakecombinationmodel, localtimodel, model_set = wind_farm_setup(38, case=case, tuning=tuning, layoutid=layoutid, nrotorpoints=nrotorpoints, alpha=alpha, layoutdir=layoutdir, lspacing=lspacing, basedirs=basedirs)
+
+    # rediscretize wind rose
+    if basedirs !== 12
+        wind_resource = ff.rediscretize_windrose(wind_resource, ndirectionbins, start=0.0, averagespeed=true)
+    end
 
     # get number of turbines 
     nturbines = length(turbine_x)
@@ -295,8 +306,8 @@ function run_optimization(layoutid, nrotorpoints; case="high-ti", tuning="sowfa-
                 "Verify level" => 0,
                 "Major optimality tolerance" => convtol,
                 # "Major iterations limit" => 1E0,
-                "Summary file" => outdir*"points$nrotorpoints-snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out",
-                "Print file" => outdir*"points$nrotorpoints-snopt-print-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out"
+                "Summary file" => outdir*"ndirs$ndirectionbins-points$nrotorpoints-snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out",
+                "Print file" => outdir*"ndirs$ndirectionbins-points$nrotorpoints-snopt-print-$(case)-layout-$(layoutid)-lti-$(lti)-wec-$(wec_values[i]).out"
             )
 
             # initialize solver
@@ -365,8 +376,8 @@ function run_optimization(layoutid, nrotorpoints; case="high-ti", tuning="sowfa-
                 "Verify level" => 0,
                 "Major optimality tolerance" => convtol,
                 # "Major iterations limit" => 1E0,
-                "Summary file" => outdir*"points$nrotorpoints-snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti).out",
-                "Print file" => outdir*"points$nrotorpoints-snopt-print-$(case)-layout-$(layoutid)-lti-$(lti).out"
+                "Summary file" => outdir*"ndirs$ndirectionbins-points$nrotorpoints-snopt-summary-$(case)-layout-$(layoutid)-lti-$(lti).out",
+                "Print file" => outdir*"ndirs$ndirectionbins-points$nrotorpoints-snopt-print-$(case)-layout-$(layoutid)-lti-$(lti).out"
             )
 
             # initialize solver
@@ -491,7 +502,7 @@ function run_optimization(layoutid, nrotorpoints; case="high-ti", tuning="sowfa-
     return xopt, aep_init, aep_final, aep_init_base, aep_final_base, aep_init_calc, aep_final_calc, info, out, clk, fcalls
 end
 
-function run_optimization_series(nruns, case, tuning, nrotorpoints; outdir="./", layoutgen="individual", wec=true, lspacing=3.0, firstrun=1, verbose=false, plotresults=false, savehistory=true)
+function run_optimization_series(nruns, case, tuning, nrotorpoints; outdir="./", layoutgen="individual", wec=true, lspacing=3.0, firstrun=1, verbose=false, ndirectionbins=12, plotresults=false, savehistory=true)
 
     layoutdir="../inputfiles/farms/startinglayouts/$layoutgen/"
     layoutid = []
@@ -510,7 +521,7 @@ function run_optimization_series(nruns, case, tuning, nrotorpoints; outdir="./",
     println("Case: $case, Rotor points: $nrotorpoints")
     for i = firstrun:nruns+firstrun-1
         println("running optimization $i")
-        xopt, aepi, aepf, aepib, aepfb, aepic, aepfc, info, out, clk, fcalls = run_optimization(i, nrotorpoints; case=case, tuning=tuning, plotresults=plotresults, verbose=verbose, wec=wec, alpha=0, savehistory=savehistory, optimize=true, outdir=outdir, layoutdir=layoutdir, lspacing=lspacing)
+        xopt, aepi, aepf, aepib, aepfb, aepic, aepfc, info, out, clk, fcalls = run_optimization(i, nrotorpoints; ndirectionbins=ndirectionbins, case=case, tuning=tuning, plotresults=plotresults, verbose=verbose, wec=wec, alpha=0, savehistory=savehistory, optimize=true, outdir=outdir, layoutdir=layoutdir, lspacing=lspacing)
         push!(layoutid, i)
         push!(xoptdata, xopt)
         push!(aepinitdata, aepi)
@@ -524,7 +535,7 @@ function run_optimization_series(nruns, case, tuning, nrotorpoints; outdir="./",
         push!(timedata, clk)
         push!(fcalldata, fcalls)
         df = DataFrame(id=layoutid, xopt=xoptdata, aepi=aepinitdata, aepf=aepfinaldata, aepib=aepinitbasedata, aepfb=aepfinalbasedata, aepic=aepinitcalcdata, aepfc=aepfinalcalcdata , info=infodata, out=outdata, time=timedata, fcalls=fcalldata, nrotorpoints=nrotorpoints)
-        CSV.write(outdir*"opt-overall-results-$case-$tuning-startrun$firstrun-nruns$nruns-rotorpoints$nrotorpoints.csv", df)
+        CSV.write(outdir*"opt-overall-results-$case-$tuning-startrun$firstrun-nruns$nruns-ndirs$ndirectionbins-rotorpoints$nrotorpoints.csv", df)
     end
 
 end

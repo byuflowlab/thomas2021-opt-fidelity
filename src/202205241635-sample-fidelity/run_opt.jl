@@ -25,6 +25,10 @@ function parse_commandline()
             help = "how many directions to use"
             arg_type = Int
             default = 36
+        "--nrotorpoints"
+        help = "how many rotor sample points to use"
+        arg_type = Int
+        default = 36
     end
 
     return parse_args(s)
@@ -37,7 +41,7 @@ function main()
         println("  $arg  =>  $val")
     end
 
-    run_optimization_series(parsed_args["nruns"], parsed_args["case"], "sowfa-nrel", parsed_args["dir-bins"]; outdir=parsed_args["out-dir"], layoutgen="angle-each-circle", wec=true, lspacing=5.0, firstrun=parsed_args["firstrun"], verbose=true, plotresults=false, savehistory=true)
+    run_optimization_series(parsed_args["nruns"], parsed_args["case"], "sowfa-nrel", parsed_args["nrotorpoints"]; outdir=parsed_args["out-dir"], ndirectionbins=parsed_args["dir-bins"], layoutgen="angle-each-circle", wec=true, lspacing=5.0, firstrun=parsed_args["firstrun"], verbose=true, plotresults=false, savehistory=true)
 
 end
 

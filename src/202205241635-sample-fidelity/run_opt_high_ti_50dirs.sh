@@ -16,4 +16,4 @@ module load julia
 nrotorpointbins=(1 5 10 20 40 60 80 100)
 
 # run julia
-julia run_opt.jl --firstrun 1 --nruns 100 --case "high-ti" --out-dir "./high-ti/" --nrotorpoints ${nrotorpointbins[${SLURM_ARRAY_TASK_ID}]} --dir-bins 12
+julia run_opt.jl --firstrun 1 --nruns 100 --case "high-ti" --out-dir "./high-ti/" --nrotorpoints ${nrotorpointbins[${SLURM_ARRAY_TASK_ID}]} --dir-bins 50
