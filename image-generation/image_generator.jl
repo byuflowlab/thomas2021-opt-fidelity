@@ -2353,8 +2353,8 @@ function directional_fidelity(colors, case; savefigs=false, showfigs=false, font
     ax.errorbar(dirbins[1,:], aveaepincreasefull, yerr=yerrfull, fmt="--", ms=5, color=colors[4], label="Average AEP increase: full fidelity")
     ax.set_xscale("log")
     # axis labels 
-    ax.set_xlabel(L"Number of Wind Directions used for Optimization ($N_D$)")
-    ax.set_ylabel("AEP Change (GW h)")
+    ax.set_xlabel(L"Number of wind directions used for optimization ($N_D$)")
+    ax.set_ylabel("AEP change (GW h)")
 
     # legend 
     # ax.legend(frameon=false)
@@ -2389,6 +2389,133 @@ function directional_fidelity(colors, case; savefigs=false, showfigs=false, font
 
 end
 
+function nrotorpoints_fidelity(colors, case; ax=nothing, savefigs=false, showfigs=false, fontsize=10)
+
+    # load data #aepi,aepf,aepib,aepfb,info,time,fcalls,ndirs
+    directory = "image-data/rotor-point-fidelity/high-ti/"
+    df = DataFrame(CSV.File(directory*"combined-results-no-layouts-$case.csv", header=true))
+    
+    # direction bins
+    ptbins= [1 5 10 20 40 60 80 100]
+    
+    # plot average opt AEP vs bin count
+    if ax === nothing
+        fig, ax = plt.subplots(1, figsize=(6,3))
+    end
+
+    # plot average opt aep
+    aveaepstartfull = []
+    aveaepstartlow = []
+    aveaepoptfull = []
+    aveaepoptlow = []
+    maxaepincreasefull = []
+    minaepincreasefull = []
+    maxaepincreaselow = []
+    minaepincreaselow = []
+    for pts in ptbins
+        x = df |>@filter(_.nrotorpoints==pts) |> DataFrame
+        push!(aveaepstartfull, sum(x[!, :aepib])/length(x[!, :aepib]))
+        push!(aveaepstartlow, sum(x[!, :aepic])/length(x[!, :aepic]))
+        push!(aveaepoptfull, sum(x[!, :aepfb])/length(x[!, :aepfb]))
+        push!(aveaepoptlow, sum(x[!, :aepfc])/length(x[!, :aepfc]))
+        push!(maxaepincreasefull, maximum(x[!, :aepfb] .- x[!, :aepib]))
+        push!(minaepincreasefull, minimum(x[!, :aepfb] .- x[!, :aepib]))
+        push!(maxaepincreaselow, maximum(x[!, :aepfc] .- x[!, :aepic]))
+        push!(minaepincreaselow, minimum(x[!, :aepfc] .- x[!, :aepic]))
+    end
+
+    # calculate AEP improvement 
+    aveaepincreasefull =  aveaepoptfull - aveaepstartfull
+    aveaepincreaselow =  aveaepoptlow - aveaepstartlow
+
+    # print max difference 
+    maxdifference = maximum(abs.((aveaepincreasefull[end] .- aveaepincreasefull)./aveaepincreasefull[end]))
+    println("Maximum percent difference for $case: $(maxdifference*100)")
+    
+    # plot all data points
+    # ax.fill_between(ptbins[1,:], minaepincreaselow, maxaepincreaselow, alpha=0.2, color=colors[3])
+    # ax.fill_between(ptbins[1,:], minaepincreasefull, maxaepincreasefull, alpha=0.3, color=colors[4])
+    # println(minaepincreasefull)
+    # plot averages 
+    yerrfull = [abs.(aveaepincreasefull.-minaepincreasefull), abs.(aveaepincreasefull.-maxaepincreasefull)]
+    yerrlow = [abs.(aveaepincreaselow.-minaepincreaselow), abs.(aveaepincreaselow.-maxaepincreaselow)]
+    ax.errorbar(ptbins[1,:], aveaepincreaselow, yerr=yerrlow, fmt="-", ms=5, color=colors[3], label="Average AEP increase: low fidelity", capsize=2)
+    ax.errorbar(ptbins[1,:], aveaepincreasefull, yerr=yerrfull, fmt="--", ms=5, color=colors[4], label="Average AEP increase: full fidelity")
+    # ax.set_xscale("log")
+    # axis labels 
+    ax.set_xlabel(L"Number of rotor points used for optimization ($N_S$)")
+    ax.set_ylabel("AEP change (GW h)")
+
+    # legend 
+    # ax.legend(frameon=false)
+    case == "high-ti-12-dirs" && ax.annotate(L"AEP calculated using $N_S$ rotor points", (5, 57), color=colors[3])
+    case == "high-ti-12-dirs" && ax.annotate("AEP re-calculated using 100 rotor points", (1, 20), color=colors[4])
+    
+    case == "high-ti-50-dirs" && ax.annotate(L"AEP calculated using $N_S$ rotor points", (5, 7.5), color=colors[3])
+    case == "high-ti-50-dirs" && ax.annotate("AEP re-calculated using 100 rotor points", (1, 3.25), color=colors[4])
+
+    # formatting
+
+    case == "high-ti-12-dirs" && ax.set(ylim=[0, 100], yticks=0:20:100)
+    case == "high-ti-50-dirs" && ax.set(ylim=[0, 10], yticks=0:2:10)
+
+    ax.spines["right"].set_visible(false)
+    ax.spines["top"].set_visible(false)
+    ax.spines["bottom"].set_visible(true)
+    ax.spines["left"].set_visible(true)
+    ax.tick_params(
+    axis="y",          # changes apply to the x-axis
+    which="both",      # both major and minor ticks are affected
+    left=true,      # ticks along the bottom edge are off
+    right=false,         # ticks along the top edge are off
+    labelleft=true) # labels along the bottom edge are off
+
+    ax.set_xticks(ticks=[1, 5, 10, 20, 40, 60, 80, 100]) # tick values
+   
+    
+    # save figure
+    if savefigs
+        plt.tight_layout()
+
+        plt.savefig("images/nrotorpoints-fidelity-$case.pdf", transparent=true)
+    end
+
+    # show figure
+    if showfigs
+        plt.tight_layout()
+
+        plt.show()
+    end
+
+    # fig, ax = plt.subplots(1)
+    # ax.scatter(df.nrotorpoints, df.aepib)
+    # ax.scatter(df.nrotorpoints, df.aepfb)
+    # plt.show()
+end
+
+function nrotorpoints_fidelity_compound(colors; savefigs=false, showfigs=false, fontsize=10)
+    
+    fig, ax = plt.subplots(1,2,figsize=(8,4))
+
+    nrotorpoints_fidelity(colors, "high-ti-12-dirs"; ax=ax[1], savefigs=false, showfigs=false, fontsize=fontsize)
+    nrotorpoints_fidelity(colors, "high-ti-50-dirs"; ax=ax[2], savefigs=false, showfigs=false, fontsize=fontsize)
+    
+    ax[1].text(50,-30,"(a) Using 12 wind directions.",horizontalalignment="center",fontsize=fontsize*1.25)
+    ax[2].text(50,-3,"(b) Using 50 wind directions.",horizontalalignment="center",fontsize=fontsize*1.25)
+    
+    plt.tight_layout()
+
+    # save figure
+    if savefigs
+        plt.savefig("images/nrotorpoints-fidelity-compound.pdf", transparent=true)
+    end
+
+    # show figure
+    if showfigs
+        plt.show()
+    end
+
+end
 function design_space_sweep(colors, case; savefigs=false, showfigs=false, fontsize=10)
 
     # load data for sweep
@@ -2493,8 +2620,10 @@ function make_images()
     # windrose(colors; savefigs=savefigs, showfigs=showfigs)
 
     # directional_fidelity(colors, "high-ti"; savefigs=savefigs, showfigs=showfigs)
+
+    nrotorpoints_fidelity_compound(colors; savefigs=savefigs, showfigs=showfigs, fontsize=fontsize)
     
-    design_space_sweep(colors, "high-ti"; savefigs=savefigs, showfigs=showfigs)
+    # design_space_sweep(colors, "high-ti"; savefigs=savefigs, showfigs=showfigs)
     
 end
 

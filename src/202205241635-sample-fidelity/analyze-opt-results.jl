@@ -1,7 +1,7 @@
 using DataFrames, CSV
 using PyPlot; const plt=PyPlot
 
-function combine_datafiles(case; directory="/Users/jaredthomas/Dropbox/onedrive/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/opt-rotor-point-study/$(case)/")
+function combine_datafiles(case; directory="/Users/jaredthomas/Dropbox/onedrive/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/opt-rotor-point-study/$case/")
 
     # get file names
     filenames = readdir(directory)
