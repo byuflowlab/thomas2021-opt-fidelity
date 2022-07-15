@@ -2579,6 +2579,102 @@ function design_space_sweep(colors, case; savefigs=false, showfigs=false, fontsi
 
 end
 
+function blockage(colors; savefigs=false, showfigs=false, fontsize=10)
+
+    # load high-ti data
+    high_ti_base_file = "image-data/blockage/base_case_blockage_high-ti_base_res0.5.csv"
+    high_ti_base_data = DataFrame(CSV.File(high_ti_base_file))
+    high_ti_opt_file = "image-data/blockage/base_case_blockage_high-ti_opt_res0.5.csv"
+    high_ti_opt_data = DataFrame(CSV.File(high_ti_opt_file))
+    
+    # load low-ti data 
+    low_ti_base_file = "image-data/blockage/base_case_blockage_low-ti_base_res0.5.csv"
+    low_ti_base_data = DataFrame(CSV.File(low_ti_base_file))
+    low_ti_opt_file = "image-data/blockage/base_case_blockage_low-ti_opt_res0.5.csv"
+    low_ti_opt_data = DataFrame(CSV.File(low_ti_opt_file))
+    
+    # get directions
+    directions = high_ti_base_data[!, :direction].*180.0./pi
+
+    # initialize plot
+    fig, ax = plt.subplots(1,figsize=(6,4))
+
+    # plot all blockage data
+    scale = 100
+    ax.plot(directions, high_ti_base_data[!, :blockage]*scale, "--o", color=colors[1], label="Base")
+    ax.plot(directions, low_ti_opt_data[!, :blockage]*scale, "--o", color=colors[3], label="low-ti opt")
+    ax.plot(directions, high_ti_opt_data[!, :blockage]*scale, "--o", color=colors[4], label="high-ti opt")
+    
+    ax.set(ylim=[0,10], xlabel="Direction (deg.)", ylabel="Blockage Ratio (%)")
+    
+    # add labels
+    ax.text(170,5.5,"Base",horizontalalignment="center",fontsize=fontsize, color=colors[1])
+    ax.text(170,8.2,"Low-TI optimized",horizontalalignment="center", color=colors[3],fontsize=fontsize)
+    ax.text(170,7,"High-TI optimized",horizontalalignment="center", color=colors[4],fontsize=fontsize)
+    plt.legend()
+
+    plt.tight_layout()
+
+    # save figure
+    if savefigs
+        plt.savefig("images/blockage.pdf", transparent=true)
+    end
+
+    # show figure
+    if showfigs
+        plt.show()
+    end
+
+end
+
+function blockage(colors; savefigs=false, showfigs=false, fontsize=10)
+
+    # load high-ti data
+    high_ti_base_file = "image-data/blockage/base_case_blockage_high-ti_base_res0.5.csv"
+    high_ti_base_data = DataFrame(CSV.File(high_ti_base_file))
+    high_ti_opt_file = "image-data/blockage/base_case_blockage_high-ti_opt_res0.5.csv"
+    high_ti_opt_data = DataFrame(CSV.File(high_ti_opt_file))
+    
+    # load low-ti data 
+    low_ti_base_file = "image-data/blockage/base_case_blockage_low-ti_base_res0.5.csv"
+    low_ti_base_data = DataFrame(CSV.File(low_ti_base_file))
+    low_ti_opt_file = "image-data/blockage/base_case_blockage_low-ti_opt_res0.5.csv"
+    low_ti_opt_data = DataFrame(CSV.File(low_ti_opt_file))
+    
+    # get directions
+    directions = high_ti_base_data[!, :direction].*180.0./pi
+
+    # initialize plot
+    fig, ax = plt.subplots(1,figsize=(6,4))
+
+    # plot all blockage data
+    scale = 100
+    ax.plot(directions, high_ti_base_data[!, :blockage]*scale, "--o", color=colors[1], label="Base")
+    ax.plot(directions, low_ti_opt_data[!, :blockage]*scale, "--o", color=colors[3], label="low-ti opt")
+    ax.plot(directions, high_ti_opt_data[!, :blockage]*scale, "--o", color=colors[4], label="high-ti opt")
+    
+    ax.set(ylim=[0,10], xlabel="Direction (deg.)", ylabel="Blockage Ratio (%)")
+    
+    # add labels
+    ax.text(170,5.5,"Base",horizontalalignment="center",fontsize=fontsize, color=colors[1])
+    ax.text(170,8.2,"Low-TI optimized",horizontalalignment="center", color=colors[3],fontsize=fontsize)
+    ax.text(170,7,"High-TI optimized",horizontalalignment="center", color=colors[4],fontsize=fontsize)
+    plt.legend()
+
+    plt.tight_layout()
+
+    # save figure
+    if savefigs
+        plt.savefig("images/blockage.pdf", transparent=true)
+    end
+
+    # show figure
+    if showfigs
+        plt.show()
+    end
+
+end
+
 function make_images()
 
     fontsize = 8
@@ -2621,10 +2717,13 @@ function make_images()
 
     # directional_fidelity(colors, "high-ti"; savefigs=savefigs, showfigs=showfigs)
 
-    nrotorpoints_fidelity_compound(colors; savefigs=savefigs, showfigs=showfigs, fontsize=fontsize)
+    # nrotorpoints_fidelity_compound(colors; savefigs=savefigs, showfigs=showfigs, fontsize=fontsize)
     
     # design_space_sweep(colors, "high-ti"; savefigs=savefigs, showfigs=showfigs)
     
+    blockage(colors; savefigs=savefigs, showfigs=showfigs, fontsize=10)
+
+    thrust(colors; savefigs=savefigs, showfigs=showfigs, fontsize=10)
 end
 
 

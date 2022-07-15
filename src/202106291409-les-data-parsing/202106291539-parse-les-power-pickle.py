@@ -17,22 +17,25 @@ def pickle_to_csv(case="low_ti",layout="",n="4"):
     else:
         layout2 = ""
 
-    pathname = "/Users/jaredthomas/OneDrive - Brigham Young University/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/les-data/"+case3+"_"+n+"/"
+    # pathname = "/Users/jaredthomas/OneDrive - Brigham Young University/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/les-data/"+case3+"_"+n+"/"
+    pathname = "/Users/jaredthomas/Dropbox/onedrive/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/les-data/"+case3+"_"+n+"/"
     filename = "saved_sowfa_"+case2+"_byu_38turb"+layout2+n+".p"
     data = pickle.load(open(pathname+filename, "rb"),encoding='ASCII')
     
-    # set regex to search for in case name to get wind direction 
-    pattern = re.compile(r'(?<=wd)\d+')
+    print(data.keys)
 
-    # initialize arrays
-    turbinepower = np.zeros((12,38))
-    winddirections = np.zeros(12) 
+    # # set regex to search for in case name to get wind direction 
+    # pattern = re.compile(r'(?<=wd)\d+')
+
+    # # initialize arrays
+    # turbinepower = np.zeros((12,38))
+    # winddirections = np.zeros(12) 
     
-    for i in np.arange(0,12):
-        turbinepower[i, :] = np.asarray(data["turbine_power"][i])*1E3
-        winddirections[i] = float(pattern.findall(data["case_name"][i])[0])
+    # for i in np.arange(0,12):
+    #     turbinepower[i, :] = np.asarray(data["turbine_power"][i])*1E3
+    #     winddirections[i] = float(pattern.findall(data["case_name"][i])[0])
 
-    np.savetxt("turbine-power-"+case+"-les"+layout+n+".txt", np.c_[turbinepower.T], header=np.array2string(winddirections))
+    # np.savetxt("turbine-power-"+case+"-les"+layout+n+".txt", np.c_[turbinepower.T], header=np.array2string(winddirections))
 
 
 

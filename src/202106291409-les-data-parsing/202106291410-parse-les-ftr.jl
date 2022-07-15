@@ -7,12 +7,18 @@ using Interpolations
 using FLOWFarm; const ff = FLOWFarm
 
 function read_les_data(case; wd=10, dframe=true)
+    dirs = collect(10:30:340)
+    id = findfirst(==(wd), dirs)
+    println(dirs)
     if case == "low-ti"
-        path = "/Users/jaredthomas/OneDrive - BYU/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/data/low_TI/c_000_38turb_D126_lowTI_wd$wd/"
-    else
-        path = "/Users/jaredthomas/OneDrive - BYU/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/data/high_TI/c_000_38turb_D126_hiTI_wd$wd/"
+        # path = "/Users/jaredthomas/OneDrive - BYU/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/data/low_TI/c_000_38turb_D126_lowTI_wd$wd/"
+        path = "/Users/jaredthomas/Dropbox/onedrive/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/les-data/high_TI_4/c_000_38turb_D126_hiTI_wd$wd/" 
+    else        
+        # path = "/Users/jaredthomas/OneDrive - BYU/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/data/high_TI/c_000_38turb_D126_hiTI_wd$wd/"
+        path = "/Users/jaredthomas/Dropbox/onedrive/Documents/Jared/School/PhD/Data/thomas2021-opt-fidelity/les-data/high_TI_4/c_000_38turb_D126_hiTI_wd$wd/"
     end
-        filename = "lite_data.ftr"
+        # filename = "lite_data.ftr"
+        filename = "lite_data_000.ftr"
     table = Arrow.Table(path*filename)
     if dframe
         return DataFrame(table)
