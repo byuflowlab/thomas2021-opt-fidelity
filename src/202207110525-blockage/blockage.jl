@@ -88,7 +88,7 @@ function blockage_all_directions(;case="high-ti", tuning="sowfa-nrel", opt=false
 
     # set boundary specs  
     boundary_center = [0.0, 0.0]
-    domain_width = 5000
+    domain_width = 45000
     domain_height = 1000
     les_radius = 2500.0
     boundary_radius = les_radius - 500 - rotor_diameter[1]/2
@@ -101,6 +101,9 @@ function blockage_all_directions(;case="high-ti", tuning="sowfa-nrel", opt=false
     for i = 1:length(wind_resource.wind_directions)
         blockage_ratio_base[i] = blockage(turbine_x, turbine_y, wind_resource.wind_directions[i], rotor_diameter[1], hub_height[1], boundary_center, domain_width, domain_height, resolution=resolution)
     end
+
+    println("Min: $(minimum(blockage_ratio_base))")
+    println("Max: $(maximum(blockage_ratio_base))")
 
     if case == "high-ti"
         n = 4
@@ -131,17 +134,20 @@ function blockage_all_directions(;case="high-ti", tuning="sowfa-nrel", opt=false
     df = DataFrame(direction=wind_resource.wind_directions, blockage=blockage_ratio_opt)
     CSV.write("base_case_blockage_$(case)_opt_res$resolution.csv", df)
 
-    # test
-    test_ratio = (pi*(126.4/2)^2)/(5000*1000)
-    turbine_x = [0.0]
-    turbine_y = [0.0]
+    println("Min: $(minimum(blockage_ratio_opt))")
+    println("Max: $(maximum(blockage_ratio_opt))")
+    
+    # # test
+    # test_ratio = (pi*(126.4/2)^2)/(5000*1000)
+    # turbine_x = [0.0]
+    # turbine_y = [0.0]
 
-    # get blockage values for test
-    blockage_ratio_test = blockage(turbine_x, turbine_y, wind_resource.wind_directions[1], rotor_diameter[1], hub_height[1], boundary_center, domain_width, domain_height, resolution=resolution)
+    # # get blockage values for test
+    # blockage_ratio_test = blockage(turbine_x, turbine_y, wind_resource.wind_directions[1], rotor_diameter[1], hub_height[1], boundary_center, domain_width, domain_height, resolution=resolution)
    
 
-    println("Test Ratio Analytic: $test_ratio")
-    println("Test Ratio Numeric: $blockage_ratio_test)")
-    println("Error: $(test_ratio .- blockage_ratio_test)")
+    # println("Test Ratio Analytic: $test_ratio")
+    # println("Test Ratio Numeric: $blockage_ratio_test)")
+    # println("Error: $(test_ratio .- blockage_ratio_test)")
 
 end
